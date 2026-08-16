@@ -2533,6 +2533,246 @@ st.markdown(
         }
     }
 
+
+    /* ============================================================
+       FINAL FINAL RESPONSIVE OVERRIDES
+       Do not let Markdown/PDF content collapse to one character
+       per line. Do not constrain the composer to a centered box.
+       ============================================================ */
+
+    /* The chat message is a flex item in Streamlit. Explicitly
+       give both the message and its content a real width. */
+    [data-testid="stChatMessage"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-testid="stChatMessage"] > div {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-testid="stChatMessageContent"],
+    [data-testid="stChatMessageContent"] > div,
+    [data-testid="stChatMessageContent"] > div > div,
+    [data-testid="stChatMessageContent"] [data-testid="stMarkdown"],
+    [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Normal prose must wrap at words, NOT individual characters. */
+    [data-testid="stChatMessageContent"] p,
+    [data-testid="stChatMessageContent"] li,
+    [data-testid="stChatMessageContent"] h1,
+    [data-testid="stChatMessageContent"] h2,
+    [data-testid="stChatMessageContent"] h3,
+    [data-testid="stChatMessageContent"] h4,
+    [data-testid="stChatMessageContent"] h5,
+    [data-testid="stChatMessageContent"] h6,
+    [data-testid="stChatMessageContent"] blockquote {
+        width: auto !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        white-space: normal !important;
+    }
+
+    /* TABLES:
+       Let the browser calculate sensible column widths.
+       If a table is genuinely wider than a phone, scroll the
+       table itself instead of squeezing every word into letters. */
+    [data-testid="stChatMessageContent"] table {
+        display: table !important;
+        width: max-content !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        table-layout: auto !important;
+        border-collapse: collapse !important;
+    }
+
+    [data-testid="stChatMessageContent"] table th,
+    [data-testid="stChatMessageContent"] table td {
+        width: auto !important;
+        min-width: 110px !important;
+        max-width: none !important;
+        padding: 9px 10px !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        vertical-align: top !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Put wide tables inside a scroll container where possible. */
+    [data-testid="stChatMessageContent"] table {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* CODE: preserve indentation and horizontal scrolling. */
+    [data-testid="stChatMessageContent"] pre {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-testid="stChatMessageContent"] pre code {
+        display: block !important;
+        width: max-content !important;
+        min-width: 100% !important;
+        max-width: none !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
+    }
+
+    /* ------------------------------------------------------------
+       COMPOSER — CLOSED RAIL
+       It should use the whole available horizontal rectangle,
+       not a 980px/centered box.
+       ------------------------------------------------------------ */
+    [data-testid="stBottom"] {
+        box-sizing: border-box !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottom"] > div > div,
+    [data-testid="stBottom"] > div > div > div {
+        box-sizing: border-box !important;
+        max-width: none !important;
+    }
+
+    [data-testid="stBottom"] [data-testid="stChatInput"] {
+        box-sizing: border-box !important;
+        max-width: none !important;
+        transform: none !important;
+    }
+
+    @media (min-width: 901px) {
+        /* Rail is 72px. Composer fills essentially the entire
+           remaining viewport, with only a small visual gutter. */
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 72px !important;
+            right: 0 !important;
+            width: auto !important;
+            padding: 7px 18px 12px 18px !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        /* When the full sidebar is open on desktop, the composer
+           begins after that sidebar and still spans the remainder. */
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 290px !important;
+            right: 0 !important;
+            width: auto !important;
+            padding: 7px 18px 12px 18px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+    }
+
+    @media (max-width: 900px) {
+        /* Closed rail: composer starts immediately after the rail
+           and uses all remaining phone width. */
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 64px !important;
+            right: 0 !important;
+            width: auto !important;
+            padding: 7px 10px 10px 10px !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        /* Open drawer overlays the page, so composer becomes full
+           viewport width. */
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            padding: 7px 10px 10px 10px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        /* Give the actual phone content the width between the rail
+           and the right edge. */
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            width: calc(100vw - 64px) !important;
+            max-width: calc(100vw - 64px) !important;
+            min-width: 0 !important;
+            margin-left: 64px !important;
+            margin-right: 0 !important;
+            padding-left: 16px !important;
+            padding-right: 12px !important;
+            box-sizing: border-box !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) .block-container {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            margin-left: 0 !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            box-sizing: border-box !important;
+        }
+    }
+
+    /* The Streamlit main area itself must never become a wider
+       flex item than the phone. */
+    @media (max-width: 900px) {
+        [data-testid="stAppViewContainer"] > .main,
+        [data-testid="stAppViewContainer"] > .main > div,
+        [data-testid="stAppViewContainer"] .main {
+            min-width: 0 !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+
+        [data-testid="stChatMessageContent"] ul,
+        [data-testid="stChatMessageContent"] ol {
+            width: auto !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding-left: 1.5em !important;
+            overflow-wrap: normal !important;
+            word-break: normal !important;
+        }
+    }
+
 </style>
     """,
     unsafe_allow_html=True,
