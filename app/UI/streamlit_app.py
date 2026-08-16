@@ -2040,7 +2040,500 @@ st.markdown(
         }
     }
 
-    </style>
+    
+    /* ======================================================
+       FINAL UI / RESPONSIVE FIXES
+       These rules are intentionally LAST.
+       They fix the real problems visible on desktop + phone:
+       - mobile rail must stay 64px, not grow to ~118px
+       - page must use the remaining mobile width
+       - long PDF answers/tables/code must never widen the page
+       - fixed composer must span the full available width
+       - desktop closed rail composer must span full content width
+       - opening the drawer must be an overlay on mobile
+       ====================================================== */
+
+    /* Never allow the document itself to become horizontally wider
+       than the viewport. */
+    html,
+    body,
+    #root,
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stAppViewContainer"] > .main,
+    main {
+        max-width: 100vw !important;
+        min-width: 0 !important;
+        overflow-x: hidden !important;
+    }
+
+    /* All Streamlit content wrappers must be allowed to shrink. */
+    [data-testid="stVerticalBlock"],
+    [data-testid="stHorizontalBlock"],
+    [data-testid="column"],
+    .element-container,
+    [data-testid="stMarkdown"],
+    [data-testid="stMarkdownContainer"] {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* ======================================================
+       DESKTOP CLOSED RAIL
+       ====================================================== */
+
+    @media (min-width: 901px) {
+
+        [class*="st-key-custom_rail"] {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+
+            width: 72px !important;
+            min-width: 72px !important;
+            max-width: 72px !important;
+            flex: 0 0 72px !important;
+
+            height: 100vh !important;
+            padding: 16px 12px !important;
+            margin: 0 !important;
+
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            z-index: 1000000 !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding-left: 96px !important;
+            padding-right: 42px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Closed-rail composer = the entire available content width. */
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 72px !important;
+            right: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: calc(100% - 84px) !important;
+            max-width: none !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Open sidebar desktop: content starts after the drawer. */
+        [class*="st-key-custom_sidebar"] {
+            width: 290px !important;
+            min-width: 290px !important;
+            max-width: 290px !important;
+            flex: 0 0 290px !important;
+            box-sizing: border-box !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) .block-container {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding-left: 332px !important;
+            padding-right: 42px !important;
+            box-sizing: border-box !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 290px !important;
+            right: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: calc(100% - 84px) !important;
+            max-width: none !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            box-sizing: border-box !important;
+        }
+    }
+
+    /* ======================================================
+       MOBILE — REAL CHATGPT-LIKE RAIL
+       ====================================================== */
+
+    @media (max-width: 900px) {
+
+        /* The viewport is the coordinate system. */
+        html,
+        body,
+        #root,
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewContainer"] > .main,
+        main {
+            width: 100% !important;
+            max-width: 100vw !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+        }
+
+        /* --------------------------------------------------
+           CLOSED RAIL
+           Exactly 64px wide. No flex growth.
+           -------------------------------------------------- */
+        [class*="st-key-custom_rail"] {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+
+            width: 64px !important;
+            min-width: 64px !important;
+            max-width: 64px !important;
+            flex: 0 0 64px !important;
+
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            max-height: 100dvh !important;
+
+            margin: 0 !important;
+            padding: 16px 8px !important;
+
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            z-index: 1000000 !important;
+        }
+
+        /* Every rail control fits inside the 64px rail. */
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_workspace"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_explain"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_research"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_revision"] {
+            width: 48px !important;
+            min-width: 48px !important;
+            max-width: 48px !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            max-height: 48px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [class*="st-key-custom_rail"] button {
+            width: 48px !important;
+            min-width: 48px !important;
+            max-width: 48px !important;
+            height: 48px !important;
+            min-height: 48px !important;
+            max-height: 48px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* --------------------------------------------------
+           MOBILE CONTENT
+           -------------------------------------------------- */
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+
+            margin: 0 !important;
+
+            padding-top: 12px !important;
+            padding-left: 76px !important;
+            padding-right: 12px !important;
+            padding-bottom: 175px !important;
+
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 76px !important;
+            padding-right: 12px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        /* --------------------------------------------------
+           OPEN DRAWER
+           It overlays the page. It NEVER pushes/squeezes the
+           content underneath it.
+           -------------------------------------------------- */
+        [class*="st-key-custom_sidebar"] {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+
+            width: min(320px, 86vw) !important;
+            min-width: min(320px, 86vw) !important;
+            max-width: min(320px, 86vw) !important;
+            flex: 0 0 auto !important;
+
+            height: 100dvh !important;
+            min-height: 100dvh !important;
+            max-height: 100dvh !important;
+
+            margin: 0 !important;
+            padding: 12px 16px 24px 16px !important;
+
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+
+            z-index: 1000001 !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            margin: 0 !important;
+        }
+
+        /* --------------------------------------------------
+           MOBILE COLUMNS
+           Never let four home cards become four tiny columns.
+           -------------------------------------------------- */
+        [data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .welcome-card,
+        .status-card,
+        .action-card,
+        .prompt-hint,
+        .note-card,
+        .document-status,
+        [data-testid="stChatMessage"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* --------------------------------------------------
+           MOBILE LONG ANSWERS / PDFs
+           THIS is the fix for the screenshots showing:
+           "How it wor..." cut off, code cut off, and
+           right-hand content disappearing.
+
+           Text can wrap. Tables become contained. Code scrolls
+           INSIDE its box instead of widening the whole page.
+           -------------------------------------------------- */
+        [data-testid="stChatMessageContent"],
+        [data-testid="stChatMessageContent"] > div,
+        [data-testid="stChatMessageContent"] p,
+        [data-testid="stChatMessageContent"] li,
+        [data-testid="stChatMessageContent"] h1,
+        [data-testid="stChatMessageContent"] h2,
+        [data-testid="stChatMessageContent"] h3,
+        [data-testid="stChatMessageContent"] h4,
+        [data-testid="stChatMessageContent"] h5,
+        [data-testid="stChatMessageContent"] h6 {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+        }
+
+        [data-testid="stChatMessageContent"] table {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            table-layout: fixed !important;
+            overflow-x: auto !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stChatMessageContent"] th,
+        [data-testid="stChatMessageContent"] td {
+            max-width: 0 !important;
+            min-width: 0 !important;
+            padding: 8px 7px !important;
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+            word-break: break-word !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Code must remain readable and may scroll horizontally
+           inside the code block, but the page itself never scrolls. */
+        [data-testid="stChatMessageContent"] pre,
+        [data-testid="stChatMessageContent"] code,
+        [data-testid="stCode"],
+        [data-testid="stCodeBlock"] {
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stChatMessageContent"] pre {
+            width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            white-space: pre !important;
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+        }
+
+        /* Images generated/rendered inside an answer can never
+           exceed the phone. */
+        [data-testid="stChatMessageContent"] img,
+        [data-testid="stChatMessageContent"] video,
+        [data-testid="stChatMessageContent"] iframe {
+            max-width: 100% !important;
+            height: auto !important;
+            box-sizing: border-box !important;
+        }
+
+        /* --------------------------------------------------
+           MOBILE COMPOSER
+           Full remaining width, aligned to the 64px rail.
+           -------------------------------------------------- */
+        [data-testid="stBottom"] {
+            position: fixed !important;
+
+            left: 64px !important;
+            right: 0 !important;
+
+            width: auto !important;
+            max-width: none !important;
+
+            margin: 0 !important;
+            padding: 7px 10px 10px 0 !important;
+
+            box-sizing: border-box !important;
+            z-index: 999998 !important;
+        }
+
+        [data-testid="stBottom"] > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: none !important;
+            min-width: 0 !important;
+
+            margin: 0 !important;
+            transform: none !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Open sidebar should not shrink the composer. */
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+
+        /* Keep content immediately above the fixed composer. */
+        .prompt-hint {
+            margin-bottom: 18px !important;
+            padding-bottom: 10px !important;
+        }
+    }
+
+    /* ======================================================
+       VERY SMALL PHONES
+       ====================================================== */
+    @media (max-width: 480px) {
+
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container,
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            padding-left: 72px !important;
+            padding-right: 9px !important;
+            padding-bottom: 175px !important;
+        }
+
+        [class*="st-key-custom_rail"] {
+            width: 60px !important;
+            min-width: 60px !important;
+            max-width: 60px !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+        }
+
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_workspace"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_explain"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_research"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_revision"],
+        [class*="st-key-custom_rail"] button {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 60px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+        }
+    }
+
+</style>
     """,
     unsafe_allow_html=True,
 )
