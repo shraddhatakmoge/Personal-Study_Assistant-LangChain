@@ -4,10 +4,6 @@ from pathlib import Path
 from langchain_core.tools import tool
 
 
-# ============================================================
-# NOTES STORAGE
-# ============================================================
-
 NOTES_FILE = Path("data/notes.json")
 
 
@@ -30,8 +26,6 @@ def load_notes():
 
             notes = json.load(file)
 
-        # Safety check in case notes.json contains
-        # something other than a list.
         if not isinstance(notes, list):
             return []
 
@@ -109,6 +103,29 @@ def get_notes() -> str:
         f"{i + 1}. {note}"
         for i, note in enumerate(notes)
     )
+
+
+# ============================================================
+# DELETE ONE NOTE
+# ============================================================
+
+@tool
+def delete_note(index: int) -> str:
+    """Delete one saved study note using its zero-based index."""
+
+    notes = load_notes()
+
+    if not notes:
+        return "No notes saved yet."
+
+    if index < 0 or index >= len(notes):
+        return "Invalid note index."
+
+    deleted_note = notes.pop(index)
+
+    save_notes(notes)
+
+    return "Note deleted successfully."
 
 
 # ============================================================
