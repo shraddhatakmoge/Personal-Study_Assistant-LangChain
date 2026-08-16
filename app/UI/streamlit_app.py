@@ -153,7 +153,7 @@ st.set_page_config(
     page_title="StudyMate",
     page_icon="🤖",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 
@@ -181,8 +181,10 @@ if "agent" not in st.session_state:
 if "show_notes" not in st.session_state:
     st.session_state.show_notes = False
 
+# Start CLOSED. On phones this shows only the compact rail.
+# Tapping the purple hamburger opens the full sidebar overlay.
 if "sidebar_open" not in st.session_state:
-    st.session_state.sidebar_open = True
+    st.session_state.sidebar_open = False
 
 if "uploaded_document" not in st.session_state:
     st.session_state.uploaded_document = None
@@ -652,13 +654,17 @@ st.markdown(
 
         bottom: 0 !important;
 
-        width: 58px !important;
+        width: 64px !important;
 
-        height: 100vh !important;
+        height: 100dvh !important;
+
+        min-width: 64px !important;
+
+        max-width: 64px !important;
 
         box-sizing: border-box !important;
 
-        padding: 16px 9px !important;
+        padding: 16px 10px !important;
 
         margin: 0 !important;
 
@@ -679,7 +685,7 @@ st.markdown(
     body:has([class*="st-key-custom_rail"])
     .block-container {
 
-        padding-left: 82px !important;
+        padding-left: 86px !important;
 
         padding-right: 42px !important;
     }
@@ -1439,9 +1445,9 @@ st.markdown(
            -------------------------------------------------- */
 
         [class*="st-key-custom_rail"] {
-            width: 58px !important;
-            min-width: 58px !important;
-            max-width: 58px !important;
+            width: 64px !important;
+            min-width: 64px !important;
+            max-width: 64px !important;
 
             top: 0 !important;
             left: 0 !important;
@@ -1460,7 +1466,7 @@ st.markdown(
             width: 100% !important;
             max-width: 100% !important;
 
-            padding-left: 70px !important;
+            padding-left: 78px !important;
             padding-right: 14px !important;
 
             margin-left: 0 !important;
@@ -1704,14 +1710,14 @@ st.markdown(
 
         body:has([class*="st-key-custom_rail"])
         .block-container {
-            padding-left: 68px !important;
+            padding-left: 76px !important;
             padding-right: 10px !important;
         }
 
         [class*="st-key-custom_sidebar"] {
-            width: 88vw !important;
-            min-width: 88vw !important;
-            max-width: 88vw !important;
+            width: 86vw !important;
+            min-width: 86vw !important;
+            max-width: 86vw !important;
         }
 
         .welcome-card {
