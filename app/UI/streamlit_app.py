@@ -3892,37 +3892,38 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-
 st.markdown(
     """
     <style>
     /* ============================================================
-       FINAL SEARCH / CHAT BAR FIX
+       FINAL CHAT BAR — ALIGN WITH THE MAIN CONTENT RECTANGLES
        ------------------------------------------------------------
-       The old CSS repeatedly constrained st.chat_input to:
-           min(980px, calc(100% - ...))
-       which made the bar stay centered and too short.
+       The chat/search bar is NOT centered independently.
 
-       This final override deliberately removes that constraint.
+       Its LEFT and RIGHT edges follow the same content area as the
+       hero/status/cards above it.
 
-       DESKTOP:
-         closed rail  -> full width from rail to right edge
-         open sidebar -> full width from sidebar to right edge
+       Closed rail:
+           content starts after the compact rail.
 
-       MOBILE:
-         closed rail  -> full remaining phone width
-         open drawer  -> full viewport width
+       Open sidebar:
+           content starts after the full sidebar.
+
+       Mobile:
+           content uses the available screen width.
     ============================================================ */
 
-    /* Remove Streamlit's internal width limits from EVERY wrapper. */
     [data-testid="stBottom"],
     [data-testid="stBottom"] > div,
     [data-testid="stBottom"] > div > div,
-    [data-testid="stBottom"] > div > div > div,
-    [data-testid="stBottom"] form,
+    [data-testid="stBottom"] > div > div > div {
+        box-sizing: border-box !important;
+    }
+
     [data-testid="stBottom"] [data-testid="stChatInput"],
-    [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+    [data-testid="stBottom"] [data-testid="stChatInput"] > div,
+    [data-testid="stBottom"] [data-testid="stChatInput"] form,
+    [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
         box-sizing: border-box !important;
         min-width: 0 !important;
         max-width: none !important;
@@ -3930,199 +3931,191 @@ st.markdown(
 
     /* ============================================================
        DESKTOP
-       ============================================================ */
+    ============================================================ */
     @media (min-width: 901px) {
 
-        /* --------------------------------------------------------
-           CLOSED RAIL
-           -------------------------------------------------------- */
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
+        /* Bottom composer follows the CLOSED-RAIL content area */
         [data-testid="stBottom"] {
-            position: fixed !important;
-            left: 72px !important;
+            left: 50px !important;
             right: 0 !important;
-            bottom: 0 !important;
-
             width: auto !important;
-            max-width: none !important;
-
-            margin: 0 !important;
-            padding: 7px 18px 12px 18px !important;
-
+            padding: 7px 28px 12px 28px !important;
             box-sizing: border-box !important;
         }
 
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
-        [data-testid="stBottom"] > div,
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
-        [data-testid="stBottom"] > div > div,
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
-        [data-testid="stBottom"] > div > div > div {
-            width: 100% !important;
-            max-width: none !important;
-            margin: 0 !important;
+        /* If the full sidebar is open, follow its content edge */
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 382px !important;
+            right: 0 !important;
+            width: auto !important;
+            padding: 7px 28px 12px 28px !important;
         }
 
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
+        /* THE BAR ITSELF:
+           same horizontal span as the main content.
+           No centering. No 980px cap. */
         [data-testid="stBottom"] [data-testid="stChatInput"] {
             display: block !important;
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
-
             margin: 0 !important;
             transform: none !important;
-        }
-
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
-        [data-testid="stBottom"] [data-testid="stChatInput"] > div {
-            width: 100% !important;
-            max-width: none !important;
-            min-width: 0 !important;
-
-            margin: 0 !important;
-        }
-
-        /* --------------------------------------------------------
-           OPEN SIDEBAR
-           --------------------------------------------------------
-           Your custom desktop sidebar is 290px wide in CSS.
-           The 18px composer padding gives the input a clean
-           visual gutter while using ALL remaining width.
-           -------------------------------------------------------- */
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] {
-            position: fixed !important;
-            left: 290px !important;
-            right: 0 !important;
-            bottom: 0 !important;
-
-            width: auto !important;
-            max-width: none !important;
-
-            margin: 0 !important;
-            padding: 7px 18px 12px 18px !important;
-
             box-sizing: border-box !important;
         }
 
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] > div,
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] > div > div,
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] > div > div > div {
-            width: 100% !important;
-            max-width: none !important;
-            margin: 0 !important;
-        }
-
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] [data-testid="stChatInput"] {
-            display: block !important;
-            width: 100% !important;
-            max-width: none !important;
-            min-width: 0 !important;
-
-            margin: 0 !important;
-            transform: none !important;
-        }
-
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] [data-testid="stChatInput"] > div {
-            width: 100% !important;
-            max-width: none !important;
-            min-width: 0 !important;
-
-            margin: 0 !important;
-        }
-
-        /* Also defeat Streamlit's generic centered form width. */
-        [data-testid="stBottom"] form,
-        [data-testid="stBottom"] form > div {
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
         }
     }
 
     /* ============================================================
-       MOBILE / TABLET
-       ============================================================ */
+       MOBILE
+    ============================================================ */
     @media (max-width: 900px) {
 
-        /* Closed compact rail. */
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
+        /* Closed rail */
         [data-testid="stBottom"] {
-            position: fixed !important;
-            left: 64px !important;
+            left: 118px !important;
             right: 0 !important;
-            bottom: 0 !important;
-
             width: auto !important;
-            max-width: none !important;
-
-            margin: 0 !important;
-            padding: 7px 10px 10px 10px !important;
-
+            padding: 7px 10px 10px 26px !important;
             box-sizing: border-box !important;
         }
 
-        body:has([class*="st-key-custom_rail"])
-        :not(:has([class*="st-key-custom_sidebar"]))
-        [data-testid="stBottom"] [data-testid="stChatInput"] {
-            width: 100% !important;
-            max-width: none !important;
-            min-width: 0 !important;
-            margin: 0 !important;
-        }
-
-        /* Open drawer overlays the page, so the composer uses the
-           entire viewport instead of being pushed beside the drawer. */
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] {
-            position: fixed !important;
+        /* Open sidebar — Streamlit's sidebar becomes an overlay,
+           so the composer uses the full viewport width. */
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
             left: 0 !important;
             right: 0 !important;
-            bottom: 0 !important;
-
             width: 100% !important;
-            max-width: none !important;
-
-            margin: 0 !important;
             padding: 7px 10px 10px 10px !important;
-
-            box-sizing: border-box !important;
         }
 
-        body:has([class*="st-key-custom_sidebar"])
-        [data-testid="stBottom"] [data-testid="stChatInput"] {
+        [data-testid="stBottom"] [data-testid="stChatInput"],
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
             margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+st.markdown(
+    """
+    <style>
+    /* ============================================================
+       FINAL SEARCH / CHAT BAR ALIGNMENT
+       ------------------------------------------------------------
+       The composer is intentionally NOT centered.
+
+       Desktop closed rail:
+         Main cards start at ~128px and end at ~1608px.
+         Match those exact horizontal edges.
+
+       Desktop open sidebar:
+         Start after the 290px drawer + 34px content padding.
+
+       The old rules above are kept for the rest of the UI.
+       These rules are the LAST rules, so they win.
+       ============================================================ */
+
+    @media (min-width: 901px) {
+
+        /* CLOSED RAIL */
+        body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+        [data-testid="stBottom"] {
+            position: fixed !important;
+            left: 94px !important;
+            right: 56px !important;
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 7px 0 12px 34px !important;
+            box-sizing: border-box !important;
         }
 
+        /* OPEN SIDEBAR */
+        body:has([class*="st-key-custom_sidebar"])
+        [data-testid="stBottom"] {
+            position: fixed !important;
+            left: 290px !important;
+            right: 56px !important;
+            width: auto !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 7px 0 12px 42px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Remove every Streamlit centering / max-width layer. */
+        [data-testid="stBottom"],
         [data-testid="stBottom"] > div,
         [data-testid="stBottom"] > div > div,
         [data-testid="stBottom"] > div > div > div,
-        [data-testid="stBottom"] form,
-        [data-testid="stBottom"] form > div {
+        [data-testid="stBottom"] [data-testid="stChatInput"],
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
-            margin: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+            transform: none !important;
         }
 
-        [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+        /* For the closed rail, the bottom bar's 34px left padding
+           is the same visual gutter used by the main cards. */
+        body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+        [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: calc(100% - 34px) !important;
+        }
+
+        /* For the open drawer, match the content gutter. */
+        body:has([class*="st-key-custom_sidebar"])
+        [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: calc(100% - 42px) !important;
+        }
+    }
+
+    @media (max-width: 900px) {
+
+        /* Mobile remains full-width relative to the available page;
+           do not apply the desktop rectangle measurements. */
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 64px !important;
+            right: 0 !important;
+            width: auto !important;
+            padding: 7px 10px 10px 10px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            padding: 7px 10px 10px 10px !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"],
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form,
+        [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
             width: 100% !important;
             max-width: none !important;
             min-width: 0 !important;
