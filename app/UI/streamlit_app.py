@@ -4740,321 +4740,130 @@ st.markdown(
 )
 
 
-<style>
-/* ============================================================
-   ABSOLUTE FINAL SEARCH BAR ALIGNMENT
-   ------------------------------------------------------------
-   The previous CSS had many competing stBottom rules.
-   This final rule makes the composer follow the SAME rectangle
-   as the main .block-container content.
-
-   CLOSED RAIL DESKTOP:
-       rail 72px + content left padding 42px
-       right padding 42px
-
-   OPEN SIDEBAR DESKTOP:
-       sidebar 290px + content left padding 42px
-       right padding 42px
-
-   No centering. No 980px max-width. No calc() shrink.
-   ============================================================ */
-
-@media (min-width: 901px) {
-
-    /* ---------------- CLOSED RAIL ---------------- */
-
-    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
-    [data-testid="stBottom"] {
-        position: fixed !important;
-
-        left: 114px !important;
-        right: 42px !important;
-
-        width: auto !important;
-        max-width: none !important;
-
-        margin: 0 !important;
-
-        padding: 7px 0 12px 0 !important;
-
-        box-sizing: border-box !important;
-    }
-
-    /* ---------------- OPEN SIDEBAR ---------------- */
-
-    body:has([class*="st-key-custom_sidebar"])
-    [data-testid="stBottom"] {
-        position: fixed !important;
-
-        left: 332px !important;
-        right: 42px !important;
-
-        width: auto !important;
-        max-width: none !important;
-
-        margin: 0 !important;
-
-        padding: 7px 0 12px 0 !important;
-
-        box-sizing: border-box !important;
-    }
-
-    /* Remove every inner Streamlit width constraint. */
-
-    [data-testid="stBottom"] > div,
-    [data-testid="stBottom"] > div > div,
-    [data-testid="stBottom"] > div > div > div,
-    [data-testid="stBottom"] [data-testid="stChatInput"],
-    [data-testid="stBottom"] [data-testid="stChatInput"] > div,
-    [data-testid="stBottom"] [data-testid="stChatInput"] form,
-    [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
-        width: 100% !important;
-        max-width: none !important;
-        min-width: 0 !important;
-
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-
-        transform: none !important;
-
-        box-sizing: border-box !important;
-    }
-
-    /* The visible search/chat rectangle itself. */
-
-    [data-testid="stBottom"] [data-testid="stChatInput"] {
-        display: block !important;
-        flex: 1 1 auto !important;
-    }
-}
-
-
-/* ============================================================
-   MOBILE
-   ============================================================ */
-
-@media (max-width: 900px) {
-
-    /* Closed rail */
-
-    body:has([class*="st-key-custom_rail"])
-    [data-testid="stBottom"] {
-        position: fixed !important;
-
-        left: 64px !important;
-        right: 10px !important;
-
-        width: auto !important;
-        max-width: none !important;
-
-        margin: 0 !important;
-
-        padding: 7px 0 10px 0 !important;
-
-        box-sizing: border-box !important;
-    }
-
-    /* Open drawer overlays the page. */
-
-    body:has([class*="st-key-custom_sidebar"])
-    [data-testid="stBottom"] {
-        position: fixed !important;
-
-        left: 10px !important;
-        right: 10px !important;
-
-        width: auto !important;
-        max-width: none !important;
-
-        margin: 0 !important;
-
-        padding: 7px 0 10px 0 !important;
-
-        box-sizing: border-box !important;
-    }
-
-    [data-testid="stBottom"] > div,
-    [data-testid="stBottom"] > div > div,
-    [data-testid="stBottom"] > div > div > div,
-    [data-testid="stBottom"] [data-testid="stChatInput"],
-    [data-testid="stBottom"] [data-testid="stChatInput"] > div,
-    [data-testid="stBottom"] [data-testid="stChatInput"] form,
-    [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
-        width: 100% !important;
-        max-width: none !important;
-        min-width: 0 !important;
-
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-
-        transform: none !important;
-
-        box-sizing: border-box !important;
-    }
-}
-</style>
-
-
-<style>
-/* ============================================================
-   FINAL RESPONSE / TABLE OVERFLOW FIX
-   ------------------------------------------------------------
-   IMPORTANT:
-   This fixes the BLACK RESPONSE TEXT escaping the right edge.
-   It does NOT change the search/chat composer.
-   ============================================================ */
-
-/* Never let a rendered answer create a wider page. */
-[data-testid="stChatMessageContent"],
-[data-testid="stChatMessageContent"] > div,
-[data-testid="stChatMessageContent"] [data-testid="stMarkdown"],
-[data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-}
-
-/* Tables must stay INSIDE the response card. */
-[data-testid="stChatMessageContent"] table {
-    display: table !important;
-
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-
-    table-layout: fixed !important;
-    border-collapse: collapse !important;
-
-    box-sizing: border-box !important;
-
-    overflow: hidden !important;
-}
-
-/* Every column is allowed to shrink. */
-[data-testid="stChatMessageContent"] table th,
-[data-testid="stChatMessageContent"] table td {
-    width: auto !important;
-
-    min-width: 0 !important;
-    max-width: none !important;
-
-    padding: 9px 10px !important;
-
-    white-space: normal !important;
-
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-
-    vertical-align: top !important;
-
-    box-sizing: border-box !important;
-}
-
-/* Markdown paragraphs/list items inside cells must also wrap. */
-[data-testid="stChatMessageContent"] table p,
-[data-testid="stChatMessageContent"] table li,
-[data-testid="stChatMessageContent"] table span,
-[data-testid="stChatMessageContent"] table strong,
-[data-testid="stChatMessageContent"] table em {
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    white-space: normal !important;
-
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-
-    box-sizing: border-box !important;
-}
-
-/* Inline code such as requests / BeautifulSoup / scikit-learn
-   must wrap instead of forcing the table wider. */
-[data-testid="stChatMessageContent"] table code {
-    display: inline !important;
-
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    white-space: pre-wrap !important;
-
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-
-    box-sizing: border-box !important;
-}
-
-/* Long links inside responses must never push the card wider. */
-[data-testid="stChatMessageContent"] a {
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-
-    white-space: normal !important;
-}
-
-/* Headings, paragraphs and lists cannot create horizontal overflow. */
-[data-testid="stChatMessageContent"] p,
-[data-testid="stChatMessageContent"] li,
-[data-testid="stChatMessageContent"] blockquote,
-[data-testid="stChatMessageContent"] h1,
-[data-testid="stChatMessageContent"] h2,
-[data-testid="stChatMessageContent"] h3,
-[data-testid="stChatMessageContent"] h4,
-[data-testid="stChatMessageContent"] h5,
-[data-testid="stChatMessageContent"] h6 {
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-
-    box-sizing: border-box !important;
-}
-
-/* Images/media in generated answers stay inside the card. */
-[data-testid="stChatMessageContent"] img,
-[data-testid="stChatMessageContent"] video,
-[data-testid="stChatMessageContent"] iframe {
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    box-sizing: border-box !important;
-}
-
-/* Keep normal code blocks readable. They can scroll INSIDE
-   themselves rather than making the whole answer/card wider. */
-[data-testid="stChatMessageContent"] pre {
-    display: block !important;
-
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-
-    box-sizing: border-box !important;
-}
-
-/* Mobile: make table cells slightly tighter while still wrapping. */
-@media (max-width: 900px) {
-
-    [data-testid="stChatMessageContent"] table {
+st.markdown(
+    """
+    <style>
+    /* ============================================================
+       FINAL RESPONSE / TABLE OVERFLOW FIX
+       ------------------------------------------------------------
+       Fixes generated answer content escaping the white response
+       box on the right. This does NOT change the search bar.
+       ============================================================ */
+
+    [data-testid="stChatMessageContent"],
+    [data-testid="stChatMessageContent"] > div,
+    [data-testid="stChatMessageContent"] [data-testid="stMarkdown"],
+    [data-testid="stChatMessageContent"] [data-testid="stMarkdownContainer"] {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Keep generated Markdown tables inside the response box. */
+    [data-testid="stChatMessageContent"] table {
+        display: table !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         table-layout: fixed !important;
+        border-collapse: collapse !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
     }
 
     [data-testid="stChatMessageContent"] table th,
     [data-testid="stChatMessageContent"] table td {
         min-width: 0 !important;
-        padding: 7px 6px !important;
-        font-size: 12px !important;
+        max-width: none !important;
+        padding: 9px 10px !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        vertical-align: top !important;
+        box-sizing: border-box !important;
     }
-}
-</style>
+
+    /* Long text, links, and inline code must wrap inside cells. */
+    [data-testid="stChatMessageContent"] table p,
+    [data-testid="stChatMessageContent"] table li,
+    [data-testid="stChatMessageContent"] table span,
+    [data-testid="stChatMessageContent"] table strong,
+    [data-testid="stChatMessageContent"] table em,
+    [data-testid="stChatMessageContent"] table a {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-testid="stChatMessageContent"] table code {
+        display: inline !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Normal answer text must also never widen the response. */
+    [data-testid="stChatMessageContent"] p,
+    [data-testid="stChatMessageContent"] li,
+    [data-testid="stChatMessageContent"] blockquote,
+    [data-testid="stChatMessageContent"] h1,
+    [data-testid="stChatMessageContent"] h2,
+    [data-testid="stChatMessageContent"] h3,
+    [data-testid="stChatMessageContent"] h4,
+    [data-testid="stChatMessageContent"] h5,
+    [data-testid="stChatMessageContent"] h6 {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Code blocks can scroll internally rather than widening the page. */
+    [data-testid="stChatMessageContent"] pre {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Media stays inside the answer card. */
+    [data-testid="stChatMessageContent"] img,
+    [data-testid="stChatMessageContent"] video,
+    [data-testid="stChatMessageContent"] iframe {
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    @media (max-width: 900px) {
+        [data-testid="stChatMessageContent"] table {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            table-layout: fixed !important;
+        }
+
+        [data-testid="stChatMessageContent"] table th,
+        [data-testid="stChatMessageContent"] table td {
+            min-width: 0 !important;
+            padding: 7px 6px !important;
+            font-size: 12px !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
