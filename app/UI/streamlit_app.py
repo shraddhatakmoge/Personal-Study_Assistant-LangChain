@@ -14,7 +14,11 @@ import requests
 import streamlit as st
 
 import os
-from app.tools.notes import get_notes
+from app.tools.notes import (
+    load_notes,
+    delete_note,
+    clear_notes,
+)
 
 # ============================================================
 # RAG API
@@ -181,6 +185,9 @@ if "agent" not in st.session_state:
 if "show_notes" not in st.session_state:
     st.session_state.show_notes = False
 
+if "confirm_clear_notes" not in st.session_state:
+    st.session_state.confirm_clear_notes = False
+
 # Start CLOSED. On phones this shows only the compact rail.
 # Tapping the purple hamburger opens the full sidebar overlay.
 # Fresh sessions start with the compact rail closed.
@@ -201,16 +208,11 @@ if "uploaded_document" not in st.session_state:
 # ============================================================
 
 try:
-    notes_result = get_notes.invoke({})
-
-    if notes_result == "No notes saved yet.":
-        notes = []
-    else:
-        notes = [
-            line.strip()
-            for line in notes_result.splitlines()
-            if line.strip()
-        ]
+    # Read the actual stored list.
+    # Do NOT parse get_notes(), because get_notes() adds display
+    # numbering and that was causing duplicate "1.", "2.", "3."
+    # text inside the Notes UI.
+    notes = load_notes()
 except Exception:
     notes = []
 
@@ -1309,36 +1311,295 @@ st.markdown(
        NOTES
        ====================================================== */
 
-    .note-card {
+    .notes-toolbar {
 
-        margin-bottom: 9px;
+        display: flex;
 
-        padding: 14px 16px;
+        align-items: center;
+
+        justify-content: space-between;
+
+        gap: 12px;
+
+        width: 100%;
+
+        box-sizing: border-box;
+
+        margin: 0 0 14px 0;
+
+        padding: 12px 14px;
 
         background: #FFFFFF;
 
         border: 1px solid #E8E1F2;
 
-        border-left: 4px solid #9277E4;
-
         border-radius: 12px;
-
-        color: #514A5D;
-
-        font-size: 13px;
-
-        line-height: 1.55;
 
         box-shadow:
             0 3px 12px
             rgba(85, 65, 135, 0.025);
     }
 
+    .notes-count {
+
+        color: #777080;
+
+        font-size: 12px;
+
+        line-height: 1.35;
+    }
+
+    .notes-count strong {
+
+        color: #5B4A82;
+
+        font-weight: 800;
+    }
+
+    .note-text-wrap {
+
+        min-width: 0;
+
+        width: 100%;
+
+        box-sizing: border-box;
+    }
+
     .note-number {
+
+        display: inline-block;
+
+        margin-bottom: 7px;
 
         color: #765DD5;
 
-        font-weight: 700;
+        font-size: 11px;
+
+        font-weight: 800;
+
+        letter-spacing: 0.7px;
+    }
+
+    .note-text {
+
+        color: #514A5D;
+
+        font-size: 13px;
+
+        line-height: 1.65;
+
+        white-space: pre-wrap;
+
+        overflow-wrap: anywhere;
+
+        word-break: normal;
+
+        max-width: 100%;
+
+        box-sizing: border-box;
+    }
+
+    /* Each complete note is a single visual card. */
+    [class*="st-key-note_item_"] {
+
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        min-width: 0 !important;
+
+        box-sizing: border-box !important;
+
+        margin: 0 0 11px 0 !important;
+
+        padding: 14px 14px 14px 16px !important;
+
+        background: #FFFFFF !important;
+
+        border: 1px solid #E8E1F2 !important;
+
+        border-left: 4px solid #9277E4 !important;
+
+        border-radius: 13px !important;
+
+        box-shadow:
+            0 3px 12px
+            rgba(85, 65, 135, 0.025) !important;
+    }
+
+    [class*="st-key-note_item_"] > div {
+
+        min-width: 0 !important;
+
+        max-width: 100% !important;
+
+        box-sizing: border-box !important;
+    }
+
+    /* Keep the note and delete button on one row on desktop. */
+    [class*="st-key-note_item_"] [data-testid="stHorizontalBlock"] {
+
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        min-width: 0 !important;
+
+        flex-wrap: nowrap !important;
+
+        align-items: flex-start !important;
+
+        gap: 12px !important;
+
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] [data-testid="column"] {
+
+        min-width: 0 !important;
+
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] [data-testid="column"]:last-child {
+
+        flex: 0 0 42px !important;
+
+        width: 42px !important;
+
+        max-width: 42px !important;
+
+        min-width: 42px !important;
+    }
+
+    /* Single-note delete button. */
+    [class*="st-key-note_item_"] [data-testid="stButton"] {
+
+        width: 42px !important;
+
+        margin: 0 !important;
+
+    }
+
+    [class*="st-key-note_item_"] [data-testid="stButton"] button {
+
+        width: 42px !important;
+
+        height: 38px !important;
+
+        min-height: 38px !important;
+
+        padding: 0 !important;
+
+        margin: 0 !important;
+
+        background: #FFF7F8 !important;
+
+        background-color: #FFF7F8 !important;
+
+        color: #B75C70 !important;
+
+        border: 1px solid #F0CDD5 !important;
+
+        border-radius: 9px !important;
+
+        box-shadow: none !important;
+
+        font-size: 15px !important;
+
+        font-weight: 700 !important;
+
+    }
+
+    [class*="st-key-note_item_"] [data-testid="stButton"] button:hover {
+
+        background: #FDECEF !important;
+
+        background-color: #FDECEF !important;
+
+        color: #9D4056 !important;
+
+        border-color: #E5AAB8 !important;
+
+    }
+
+    /* Clear-all confirmation box. */
+    .clear-notes-confirm {
+
+        width: 100%;
+
+        box-sizing: border-box;
+
+        margin: 0 0 14px 0;
+
+        padding: 13px 14px;
+
+        background: #FFF9FA;
+
+        border: 1px solid #F0CDD5;
+
+        border-radius: 12px;
+
+        color: #6D4650;
+
+        font-size: 12px;
+
+        line-height: 1.45;
+    }
+
+    .clear-notes-confirm strong {
+
+        color: #8E3E51;
+
+        font-weight: 800;
+    }
+
+    /* Clear-all button. */
+    [class*="st-key-clear_all_notes"] button {
+
+        min-height: 38px !important;
+
+        padding: 7px 13px !important;
+
+        background: #FFF7F8 !important;
+
+        background-color: #FFF7F8 !important;
+
+        color: #A3485F !important;
+
+        border: 1px solid #EBC5CE !important;
+
+        border-radius: 9px !important;
+
+        font-size: 11px !important;
+
+        font-weight: 700 !important;
+
+        box-shadow: none !important;
+    }
+
+    [class*="st-key-clear_all_notes"] button:hover {
+
+        background: #FDECEF !important;
+
+        background-color: #FDECEF !important;
+
+        color: #8E344A !important;
+
+        border-color: #E1A4B2 !important;
+    }
+
+    [class*="st-key-confirm_clear_notes"] button {
+
+        min-height: 38px !important;
+
+        padding: 7px 12px !important;
+
+        border-radius: 9px !important;
+
+        font-size: 11px !important;
+
+        font-weight: 700 !important;
     }
 
 
@@ -3103,6 +3364,133 @@ else:
             st.rerun()
 
 
+st.markdown(
+    """
+    <style>
+    /* ============================================================
+       NOTES — FINAL RESPONSIVE OVERRIDES
+       ============================================================ */
+
+    [class*="st-key-note_item_"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] [data-testid="stHorizontalBlock"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: flex-start !important;
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] [data-testid="column"]:first-child {
+        min-width: 0 !important;
+        max-width: none !important;
+        flex: 1 1 auto !important;
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] [data-testid="column"]:last-child {
+        flex: 0 0 42px !important;
+        width: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] .note-text-wrap {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    [class*="st-key-note_item_"] .note-text {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        white-space: pre-wrap !important;
+        overflow-wrap: anywhere !important;
+        word-break: normal !important;
+        box-sizing: border-box !important;
+    }
+
+    /* The broad mobile CSS makes all Streamlit columns 100%.
+       Override that ONLY inside a note card so the delete icon
+       stays on the right of the same card. */
+    @media (max-width: 900px) {
+
+        [class*="st-key-note_item_"] {
+            padding: 13px 11px 13px 13px !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="stHorizontalBlock"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-wrap: nowrap !important;
+            gap: 8px !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="column"]:first-child {
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: calc(100% - 50px) !important;
+            flex: 1 1 auto !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="column"]:last-child {
+            width: 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
+            flex: 0 0 42px !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="stButton"] button {
+            width: 42px !important;
+            min-width: 42px !important;
+            max-width: 42px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 !important;
+        }
+
+        .notes-toolbar {
+            padding: 11px 12px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+
+        [class*="st-key-note_item_"] {
+            padding: 12px 9px 12px 11px !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="column"]:last-child {
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            flex-basis: 40px !important;
+        }
+
+        [class*="st-key-note_item_"] [data-testid="stButton"],
+        [class*="st-key-note_item_"] [data-testid="stButton"] button {
+            width: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # ============================================================
 # NOTES PAGE
 # ============================================================
@@ -3118,7 +3506,8 @@ if st.session_state.show_notes:
             </div>
 
             <div class="welcome-text">
-                Your saved study knowledge.
+                Your saved study knowledge — clean, readable, and
+                ready for revision.
             </div>
 
         </div>
@@ -3128,12 +3517,17 @@ if st.session_state.show_notes:
     st.write("")
 
 
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
+
     if st.button(
         "←  Back to StudyMate",
         key="back_to_studymate",
     ):
 
         st.session_state.show_notes = False
+        st.session_state.confirm_clear_notes = False
 
         st.rerun()
 
@@ -3141,38 +3535,173 @@ if st.session_state.show_notes:
     st.write("")
 
 
-    if not notes:
+    # --------------------------------------------------------
+    # NOTES HEADER + CLEAR ALL
+    # --------------------------------------------------------
 
-        st.info(
-            "You haven't saved any notes yet."
+    if notes:
+
+        render_html(
+            f"""
+            <div class="notes-toolbar">
+
+                <div class="notes-count">
+                    <strong>{note_count}</strong>
+                    {"saved note" if note_count == 1 else "saved notes"}
+                </div>
+
+            </div>
+            """
         )
 
-    else:
+
+        # ----------------------------------------------------
+        # CLEAR ALL CONFIRMATION
+        # ----------------------------------------------------
+
+        if st.session_state.confirm_clear_notes:
+
+            render_html(
+                """
+                <div class="clear-notes-confirm">
+
+                    <strong>Delete all study notes?</strong><br>
+
+                    This will permanently remove every saved note
+                    from your notes file. This cannot be undone.
+
+                </div>
+                """
+            )
+
+            confirm_col, cancel_col = st.columns(
+                [1, 1],
+                gap="small",
+            )
+
+            with confirm_col:
+
+                if st.button(
+                    "Yes, clear all notes",
+                    key="confirm_clear_notes",
+                    use_container_width=True,
+                ):
+
+                    clear_notes.invoke({})
+
+                    st.session_state.confirm_clear_notes = False
+
+                    st.rerun()
+
+
+            with cancel_col:
+
+                if st.button(
+                    "Cancel",
+                    key="cancel_clear_notes",
+                    use_container_width=True,
+                ):
+
+                    st.session_state.confirm_clear_notes = False
+
+                    st.rerun()
+
+        else:
+
+            if st.button(
+                "Clear all notes",
+                key="clear_all_notes",
+                help="Delete every saved study note",
+            ):
+
+                st.session_state.confirm_clear_notes = True
+
+                st.rerun()
+
+
+        st.write("")
+
+
+        # ----------------------------------------------------
+        # NOTE CARDS
+        # ----------------------------------------------------
 
         for index, note in enumerate(
             notes,
             start=1,
         ):
 
-            safe_note = html.escape(note)
-
-            render_html(
-                f"""
-                <div class="note-card">
-
-                    <span class="note-number">
-                        {index:02d}
-                    </span>
-
-                    &nbsp;&nbsp;
-
-                    {safe_note}
-
-                </div>
-                """
+            safe_note = html.escape(
+                str(note)
             )
 
+            # Use a stable zero-based storage index for deletion.
+            note_index = index - 1
+
+            with st.container(
+                key=f"note_item_{note_index}",
+            ):
+
+                note_col, delete_col = st.columns(
+                    [0.90, 0.10],
+                    gap="small",
+                )
+
+
+                with note_col:
+
+                    render_html(
+                        f"""
+                        <div class="note-text-wrap">
+
+                            <div class="note-number">
+                                NOTE {index:02d}
+                            </div>
+
+                            <div class="note-text">
+                                {safe_note}
+                            </div>
+
+                        </div>
+                        """
+                    )
+
+
+                with delete_col:
+
+                    if st.button(
+                        "×",
+                        key=f"delete_note_{note_index}",
+                        help=f"Delete note {index}",
+                    ):
+
+                        delete_result = delete_note.invoke(
+                            {
+                                "index": note_index,
+                            }
+                        )
+
+                        # If the deleted note was the last note,
+                        # also close any stale confirmation state.
+                        st.session_state.confirm_clear_notes = False
+
+                        st.rerun()
+
+    else:
+
+        st.session_state.confirm_clear_notes = False
+
+        st.info(
+            "You haven't saved any notes yet."
+        )
+
+        st.caption(
+            "When you save a study note, it will appear here."
+        )
+
     st.stop()
+
+
 
 
 # ============================================================
