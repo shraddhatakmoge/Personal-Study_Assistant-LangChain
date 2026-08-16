@@ -1353,71 +1353,387 @@ st.markdown(
 
 
     /* ======================================================
-       RESPONSIVE
+       RESPONSIVE — MOBILE
        ====================================================== */
 
     @media (max-width: 900px) {
 
+        /* --------------------------------------------------
+           MOBILE MAIN AREA
+           -------------------------------------------------- */
+
+        .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            padding-top: 12px !important;
+            padding-right: 14px !important;
+            padding-bottom: 145px !important;
+            overflow-x: hidden !important;
+        }
+
+
+        /* --------------------------------------------------
+           OPEN SIDEBAR = OVERLAY, NOT A COLUMN
+
+           This is the main fix.
+
+           Previously the sidebar stayed fixed at 260px and
+           the main content kept 278px left padding. On a
+           phone that leaves only a tiny strip for the app.
+
+           Now the sidebar sits OVER the page like ChatGPT's
+           mobile drawer.
+           -------------------------------------------------- */
+
         [class*="st-key-custom_sidebar"] {
+            width: min(320px, 86vw) !important;
+            min-width: min(320px, 86vw) !important;
+            max-width: min(320px, 86vw) !important;
 
-            width: 260px !important;
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
 
-            min-width: 260px !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
 
-            max-width: 260px !important;
+            padding: 12px 16px 24px 16px !important;
+
+            z-index: 1000000 !important;
+
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+
+            box-shadow:
+                8px 0 28px
+                rgba(55, 40, 95, 0.16) !important;
+        }
+
+
+        body:has([class*="st-key-custom_sidebar"])
+        .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+
+        /* Keep sidebar contents inside the drawer. */
+
+        [class*="st-key-custom_sidebar"] > div,
+        [class*="st-key-custom_sidebar"] [data-testid="stVerticalBlock"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+
+        /* --------------------------------------------------
+           CLOSED RAIL
+           -------------------------------------------------- */
+
+        [class*="st-key-custom_rail"] {
+            width: 58px !important;
+            min-width: 58px !important;
+            max-width: 58px !important;
+
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+
+            height: 100dvh !important;
+
+            padding: 14px 8px !important;
+
+            z-index: 1000000 !important;
+        }
+
+
+        body:has([class*="st-key-custom_rail"])
+        .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+
+            padding-left: 70px !important;
+            padding-right: 14px !important;
+
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+
+        /* --------------------------------------------------
+           HAMBURGER
+           -------------------------------------------------- */
+
+        [class*="st-key-custom_sidebar"]
+        [class*="st-key-close_sidebar_button"] {
+            margin-bottom: 18px !important;
+        }
+
+
+        /* --------------------------------------------------
+           BRAND
+           -------------------------------------------------- */
+
+        .brand-wrapper {
+            gap: 10px !important;
+            margin-bottom: 24px !important;
+        }
+
+        .brand-icon {
+            width: 46px !important;
+            height: 46px !important;
+            border-radius: 13px !important;
+            font-size: 20px !important;
+        }
+
+        .brand-title {
+            font-size: 18px !important;
+        }
+
+        .brand-subtitle {
+            font-size: 9px !important;
+        }
+
+
+        /* --------------------------------------------------
+           HOME CARDS
+
+           Force the four cards to use the full mobile width
+           instead of allowing four narrow columns to squeeze
+           beside each other.
+           -------------------------------------------------- */
+
+        [data-testid="stHorizontalBlock"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+
+            flex-wrap: wrap !important;
+        }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            min-width: 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+
+            box-sizing: border-box !important;
+        }
+
+        .action-card {
+            width: 100% !important;
+            min-height: 0 !important;
+            height: auto !important;
+            padding: 18px !important;
+            margin-bottom: 10px !important;
+            box-sizing: border-box !important;
+        }
+
+        .action-icon {
+            font-size: 22px !important;
+        }
+
+        .action-title {
+            font-size: 15px !important;
+            margin-top: 9px !important;
+        }
+
+        .action-description {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+        }
+
+
+        /* --------------------------------------------------
+           WELCOME / STATUS
+           -------------------------------------------------- */
+
+        .welcome-card {
+            width: 100% !important;
+            padding: 20px !important;
+            border-radius: 15px !important;
+            box-sizing: border-box !important;
+        }
+
+        .welcome-title {
+            font-size: 24px !important;
+        }
+
+        .welcome-text {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+        }
+
+        .status-card {
+            width: 100% !important;
+            padding: 10px 13px !important;
+        }
+
+        .status-text {
+            font-size: 11px !important;
+        }
+
+        .prompt-hint {
+            padding: 0 4px !important;
+            font-size: 11px !important;
+        }
+
+
+        /* --------------------------------------------------
+           CHAT MESSAGES
+           -------------------------------------------------- */
+
+        [data-testid="stChatMessage"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+
+            margin-bottom: 9px !important;
+            border-radius: 14px !important;
+        }
+
+        [data-testid="stChatMessageContent"] {
+            font-size: 14px !important;
+            line-height: 1.55 !important;
+            overflow-wrap: anywhere !important;
+        }
+
+
+        /* --------------------------------------------------
+           CHAT INPUT
+
+           IMPORTANT:
+           On mobile it must use the whole viewport.
+           The old left: 290px permanently removed ~290px
+           from the phone width.
+           -------------------------------------------------- */
+
+        [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+
+            padding: 7px 10px 10px 10px !important;
+
+            box-sizing: border-box !important;
+            z-index: 999998 !important;
+        }
+
+        [data-testid="stBottom"] > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: 100% !important;
+
+            margin: 0 !important;
+            box-sizing: border-box !important;
+
+            transform: none !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+
+            border-radius: 15px !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] textarea {
+            font-size: 14px !important;
+        }
+
+
+        /* --------------------------------------------------
+           DOCUMENT STATUS
+           -------------------------------------------------- */
+
+        .document-status {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+
+            box-sizing: border-box !important;
+
+            overflow-wrap: anywhere !important;
+        }
+
+
+        /* --------------------------------------------------
+           NOTES
+           -------------------------------------------------- */
+
+        .note-card {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow-wrap: anywhere !important;
+        }
+    }
+
+
+    /* ======================================================
+       EXTRA SMALL PHONES
+       ====================================================== */
+
+    @media (max-width: 480px) {
+
+        .block-container {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            padding-bottom: 140px !important;
         }
 
         body:has([class*="st-key-custom_sidebar"])
         .block-container {
-
-            padding-left: 278px !important;
-
-            padding-right: 18px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
         }
 
         body:has([class*="st-key-custom_rail"])
         .block-container {
-
-            padding-left: 72px !important;
-
-            padding-right: 18px !important;
+            padding-left: 68px !important;
+            padding-right: 10px !important;
         }
 
-        .block-container {
-
-            padding-top: 15px !important;
-
-            padding-bottom: 155px !important;
+        [class*="st-key-custom_sidebar"] {
+            width: 88vw !important;
+            min-width: 88vw !important;
+            max-width: 88vw !important;
         }
 
         .welcome-card {
-
-            padding: 22px;
+            padding: 17px !important;
         }
 
         .welcome-title {
-
-            font-size: 25px;
-        }
-
-        .welcome-text {
-
-            font-size: 12px;
+            font-size: 22px !important;
         }
 
         .action-card {
-
-            min-height: 108px;
+            padding: 16px !important;
         }
 
-        [data-testid="stChatInput"] {
-
-            width: 94% !important;
+        .prompt-hint {
+            font-size: 10px !important;
+            line-height: 1.55 !important;
         }
 
-        .document-status {
-
-            width: 94%;
+        [data-testid="stBottom"] {
+            padding-left: 7px !important;
+            padding-right: 7px !important;
         }
     }
 
@@ -1500,7 +1816,8 @@ if st.session_state.sidebar_open:
             key="new_conversation",
         ):
 
-            memory.clear()
+            if st.session_state.memory is not None:
+                st.session_state.memory.clear()
 
             st.session_state.messages = []
 
