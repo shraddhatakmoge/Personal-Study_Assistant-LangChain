@@ -270,8 +270,8 @@ if "agent" not in st.session_state:
 if "show_notes" not in st.session_state:
     st.session_state.show_notes = False
 
-if "confirm_clear_notes" not in st.session_state:
-    st.session_state.confirm_clear_notes = False
+if "confirm_clear_notes_state" not in st.session_state:
+    st.session_state.confirm_clear_notes_state = False
 
 # Start CLOSED. On phones this shows only the compact rail.
 # Tapping the purple hamburger opens the full sidebar overlay.
@@ -3611,7 +3611,7 @@ if st.session_state.show_notes:
     ):
 
         st.session_state.show_notes = False
-        st.session_state.confirm_clear_notes = False
+        st.session_state.confirm_clear_notes_state = False
 
         st.rerun()
 
@@ -3643,7 +3643,7 @@ if st.session_state.show_notes:
         # CLEAR ALL CONFIRMATION
         # ----------------------------------------------------
 
-        if st.session_state.confirm_clear_notes:
+        if st.session_state.confirm_clear_notes_state:
 
             render_html(
                 """
@@ -3673,7 +3673,7 @@ if st.session_state.show_notes:
 
                     clear_all_notes_for_ui()
 
-                    st.session_state.confirm_clear_notes = False
+                    st.session_state.confirm_clear_notes_state = False
 
                     st.rerun()
 
@@ -3686,7 +3686,7 @@ if st.session_state.show_notes:
                     use_container_width=True,
                 ):
 
-                    st.session_state.confirm_clear_notes = False
+                    st.session_state.confirm_clear_notes_state = False
 
                     st.rerun()
 
@@ -3698,7 +3698,7 @@ if st.session_state.show_notes:
                 help="Delete every saved study note",
             ):
 
-                st.session_state.confirm_clear_notes = True
+                st.session_state.confirm_clear_notes_state = True
 
                 st.rerun()
 
@@ -3765,13 +3765,13 @@ if st.session_state.show_notes:
 
                         # If the deleted note was the last note,
                         # also close any stale confirmation state.
-                        st.session_state.confirm_clear_notes = False
+                        st.session_state.confirm_clear_notes_state = False
 
                         st.rerun()
 
     else:
 
-        st.session_state.confirm_clear_notes = False
+        st.session_state.confirm_clear_notes_state = False
 
         st.info(
             "You haven't saved any notes yet."
