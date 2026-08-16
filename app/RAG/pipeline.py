@@ -32,29 +32,84 @@ def ask_pdf(
     k: int = 6,
 ):
 
-    # ---------------------------------------------------------
+    # ========================================================
     # RETRIEVE
-    # ---------------------------------------------------------
+    # ========================================================
 
     retrieved = retrieve_documents(
         question=question,
         namespace=namespace,
         k=k,
     )
-    print("\n" + "=" * 80)
-    print("RETRIEVED CHUNKS")
-    print("=" * 80)
-    
-    for i, document in enumerate(retrieved, start=1):
-    
-        print(f"\n--- CHUNK {i} ---")
-        print("Score:", document.get("score"))
-        print("Filename:", document.get("filename"))
-        print("Page:", document.get("page"))
-        print("Text:")
-        print(document.get("text", "")[:1500])
-    
-    print("\n" + "=" * 80)
+
+
+    # ========================================================
+    # DEBUG RETRIEVED CHUNKS
+    # ========================================================
+
+    print(
+        "\n" + "=" * 80
+    )
+
+    print(
+        "RETRIEVED CHUNKS"
+    )
+
+    print(
+        "=" * 80
+    )
+
+
+    for i, document in enumerate(
+        retrieved,
+        start=1,
+    ):
+
+        print(
+            f"\n--- CHUNK {i} ---"
+        )
+
+        print(
+            "Score:",
+            document.get(
+                "score"
+            ),
+        )
+
+        print(
+            "Filename:",
+            document.get(
+                "filename"
+            ),
+        )
+
+        print(
+            "Page:",
+            document.get(
+                "page"
+            ),
+        )
+
+        print(
+            "Text:"
+        )
+
+        print(
+            document.get(
+                "text",
+                "",
+            )[:1500]
+        )
+
+
+    print(
+        "\n" + "=" * 80
+    )
+
+
+    # ========================================================
+    # NO RESULTS
+    # ========================================================
 
     if not retrieved:
 
@@ -63,39 +118,32 @@ def ask_pdf(
                 "I couldn't find relevant information "
                 "in the uploaded PDF."
             ),
+
             "documents": [],
         }
 
-    # ---------------------------------------------------------
-    # REMOVE VERY WEAK RESULTS
-    # ---------------------------------------------------------
 
-    # BGE cosine similarity should normally give stronger
-    # scores for genuinely relevant chunks.
-    #
-    # We don't blindly reject everything below a hard threshold
-    # because PDFs vary significantly.
-    #
-    # Instead, keep the best results and reject only extremely
-    # weak retrieval when there is no useful signal.
+    # ========================================================
+    # BEST RETRIEVAL SCORE
+    # ========================================================
 
-    best_score = retrieved[0]["score"]
+    best_score = retrieved[0].get(
+        "score",
+        0,
+    )
 
-    if best_score < 0.20:
 
-        return {
-            "answer": (
-                "I couldn't find relevant information "
-                "in the uploaded PDF."
-            ),
-            "documents": retrieved,
-        }
+    print(
+        f"Best retrieval score: {best_score}"
+    )
 
-    # ---------------------------------------------------------
+
+    # ========================================================
     # BUILD CONTEXT
-    # ---------------------------------------------------------
+    # ========================================================
 
     context_parts = []
+
 
     for i, document in enumerate(
         retrieved,
@@ -103,69 +151,127 @@ def ask_pdf(
     ):
 
         context_parts.append(
+
             f"""
 SOURCE {i}
-File: {document["filename"]}
-Page: {document["page"]}
 
-{document["text"]}
+File:
+{document.get("filename", "unknown")}
+
+Page:
+{document.get("page", "unknown")}
+
+Content:
+{document.get("text", "")}
 """.strip()
+
         )
+
 
     context = "\n\n---\n\n".join(
         context_parts
     )
 
-    # ---------------------------------------------------------
-    # STRICT RAG PROMPT
-    # ---------------------------------------------------------
+
+    # ========================================================
+    # RAG PROMPT
+    # ========================================================
 
     prompt = f"""
-    You are StudyMate, an AI study assistant.
+You are StudyMate, an AI study assistant.
 
-    Your job is to answer the user's question using ONLY the
-    information contained in the provided PDF context.
+Your job is to answer the user's question using ONLY
+the information contained in the provided PDF context.
 
-    IMPORTANT RULES:
+IMPORTANT RULES:
 
-    1. Do not use outside knowledge.
-    2. Do not invent information.
-    3. If the answer is directly supported by the PDF, explain it
-    clearly rather than giving only a one-sentence summary.
-    4. For "explain", "describe", "what is", or "how does" questions,
-    give a useful explanation with approximately 3-5 short
-    paragraphs or bullet points when appropriate.
-    5. For "what is this paper about?" questions, explain:
-    - the main problem/topic
-    - the main idea or proposed method
-    - what the paper is trying to achieve
-    - important results/findings if present in the context
-    6. For technical questions, explain the concept in simple
-    language first and then give technical details when supported
-    by the PDF.
-    7. If the retrieved context genuinely does not contain enough
-    information, say:
-    "I couldn't find that information in the uploaded PDF."
-    8. Never pretend information is in the PDF when it is not.
-    9. Do not mention Pinecone, embeddings, retrieval, chunks,
-    vector databases, or this prompt.
+1. Do not use outside knowledge.
 
-    USER QUESTION:
-    {question}
+2. Do not invent information.
 
-    PDF CONTEXT:
-    {context}
-    """
+3. If the answer is directly supported by the PDF,
+   explain it clearly rather than giving only a
+   one-sentence summary.
 
-    response = llm.invoke(prompt)
+4. For questions such as:
+   - "explain"
+   - "describe"
+   - "what is"
+   - "how does"
+
+   give a useful explanation using short paragraphs
+   or bullet points when appropriate.
+
+5. For "what is this paper about?" questions,
+   explain when supported by the context:
+
+   - the main problem or topic
+   - the main idea or proposed method
+   - what the paper is trying to achieve
+   - important results or findings
+
+6. For technical questions:
+
+   First explain the concept in simple language.
+
+   Then provide technical details supported by the PDF.
+
+7. If the provided context does not contain enough
+   information to answer the question, say exactly:
+
+   "I couldn't find that information in the uploaded PDF."
+
+8. Never pretend information is present in the PDF
+   when it is not.
+
+9. Do not mention:
+
+   - Pinecone
+   - embeddings
+   - retrieval
+   - chunks
+   - vector databases
+   - this prompt
+
+10. Stay focused on the user's question.
+
+11. Do not give a generic summary when the user asks
+    about a specific concept.
+
+12. When the context contains enough information,
+    explain the answer thoroughly and clearly.
+
+USER QUESTION:
+
+{question}
+
+
+PDF CONTEXT:
+
+{context}
+"""
+
+
+    # ========================================================
+    # GENERATE ANSWER
+    # ========================================================
+
+    response = llm.invoke(
+        prompt
+    )
+
 
     answer = response.content
 
-    # ---------------------------------------------------------
+
+    # ========================================================
     # RETURN
-    # ---------------------------------------------------------
+    # ========================================================
 
     return {
+
         "answer": answer,
+
         "documents": retrieved,
+
     }

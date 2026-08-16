@@ -45,22 +45,24 @@ index = pc.Index(
 # EMBEDDING CONFIG
 # ============================================================
 
+# This MUST match the model configured for your Pinecone index.
 EMBEDDING_MODEL = "llama-text-embed-v2"
 
+# Your existing Pinecone index is configured for 384 dimensions.
 EMBEDDING_DIMENSION = 384
 
 
 # ============================================================
-# EMBEDDING DOCUMENTS
+# EMBED DOCUMENTS
 # ============================================================
 
 def embed_documents(texts):
     """
-    Generate embeddings for document chunks.
+    Generate embeddings for document chunks using
+    Pinecone's hosted embedding model.
 
-    Pinecone hosts the embedding model, so we do NOT
-    download Hugging Face / Sentence Transformers / PyTorch
-    onto the Render server.
+    No Hugging Face model, sentence-transformers,
+    or PyTorch is loaded locally.
     """
 
     if not texts:
@@ -88,7 +90,7 @@ def embed_documents(texts):
 
 def embed_query(text):
     """
-    Generate an embedding for a user's search question.
+    Generate an embedding for a user's question.
     """
 
     if not text or not text.strip():
@@ -122,8 +124,8 @@ def _make_vector_id(
     """
     Creates a deterministic ID for each chunk.
 
-    This prevents the same PDF/chunk from getting
-    a completely new ID every time it is uploaded.
+    Re-uploading the same PDF/chunk therefore produces
+    the same vector ID instead of creating random IDs.
     """
 
     page = metadata.get(
@@ -162,9 +164,10 @@ def index_documents(
             "No documents were provided for indexing."
         )
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # CLEAR EXISTING NAMESPACE
-    # --------------------------------------------------------
+    # ========================================================
 
     try:
 
@@ -183,13 +186,15 @@ def index_documents(
             f"Warning: Could not clear namespace: {e}"
         )
 
-    # --------------------------------------------------------
-    # PREPARE UNIQUE DOCUMENT CHUNKS
-    # --------------------------------------------------------
+
+    # ========================================================
+    # PREPARE UNIQUE CHUNKS
+    # ========================================================
 
     valid_documents = []
 
     seen_text = set()
+
 
     for document in documents:
 
@@ -197,6 +202,7 @@ def index_documents(
 
         if not text:
             continue
+
 
         # ----------------------------------------------------
         # REMOVE DUPLICATE CHUNKS
@@ -206,8 +212,10 @@ def index_documents(
             text.split()
         ).lower()
 
+
         if normalized_text in seen_text:
             continue
+
 
         seen_text.add(
             normalized_text
@@ -217,33 +225,38 @@ def index_documents(
             document
         )
 
+
     if not valid_documents:
 
         raise ValueError(
             "No valid text chunks were generated."
         )
 
-    # --------------------------------------------------------
-    # CREATE TEXT LIST
-    # --------------------------------------------------------
+
+    # ========================================================
+    # EXTRACT TEXT
+    # ========================================================
 
     texts = [
         document.page_content.strip()
         for document in valid_documents
     ]
 
+
     print(
-        f"Generating embeddings for "
+        f"Generating Pinecone embeddings for "
         f"{len(texts)} unique chunks..."
     )
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # GENERATE EMBEDDINGS
-    # --------------------------------------------------------
+    # ========================================================
 
     vectors_values = embed_documents(
         texts
     )
+
 
     if len(vectors_values) != len(
         valid_documents
@@ -254,11 +267,13 @@ def index_documents(
             "number of documents."
         )
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # CREATE PINECONE VECTORS
-    # --------------------------------------------------------
+    # ========================================================
 
     vectors = []
+
 
     for document, vector in zip(
         valid_documents,
@@ -266,6 +281,11 @@ def index_documents(
     ):
 
         text = document.page_content.strip()
+
+
+        # ----------------------------------------------------
+        # METADATA
+        # ----------------------------------------------------
 
         metadata = {
 
@@ -293,6 +313,7 @@ def index_documents(
 
         }
 
+
         # ----------------------------------------------------
         # STABLE VECTOR ID
         # ----------------------------------------------------
@@ -303,6 +324,7 @@ def index_documents(
             metadata=metadata,
         )
 
+
         vectors.append(
             {
                 "id": vector_id,
@@ -311,15 +333,25 @@ def index_documents(
             }
         )
 
-    # --------------------------------------------------------
+
+    if not vectors:
+
+        raise ValueError(
+            "No valid vectors were generated."
+        )
+
+
+    # ========================================================
     # UPSERT IN BATCHES
-    # --------------------------------------------------------
+    # ========================================================
 
     batch_size = 50
+
 
     print(
         f"Uploading {len(vectors)} chunks to Pinecone..."
     )
+
 
     for i in range(
         0,
@@ -331,14 +363,17 @@ def index_documents(
             i:i + batch_size
         ]
 
+
         index.upsert(
             vectors=batch,
             namespace=namespace,
         )
 
+
     print(
         "Documents successfully indexed."
     )
+
 
     return len(vectors)
 
@@ -353,9 +388,9 @@ def retrieve_documents(
     k: int = 6,
 ):
 
-    # --------------------------------------------------------
+    # ========================================================
     # VALIDATE QUESTION
-    # --------------------------------------------------------
+    # ========================================================
 
     if not question or not question.strip():
 
@@ -363,25 +398,25 @@ def retrieve_documents(
             "Question cannot be empty."
         )
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # EMBED QUESTION
-    # --------------------------------------------------------
+    # ========================================================
 
     query_vector = embed_query(
         question
     )
 
-    # --------------------------------------------------------
-    # SEARCH MORE THAN WE NEED
-    #
-    # We retrieve extra candidates because some may be
-    # duplicates.
-    # --------------------------------------------------------
+
+    # ========================================================
+    # SEARCH MORE THAN REQUIRED
+    # ========================================================
 
     search_k = max(
         k * 4,
         20,
     )
+
 
     result = index.query(
         vector=query_vector,
@@ -390,18 +425,22 @@ def retrieve_documents(
         include_metadata=True,
     )
 
+
     matches = result.get(
         "matches",
         [],
     )
 
+
     documents = []
 
-    # --------------------------------------------------------
+
+    # ========================================================
     # DUPLICATE DETECTION
-    # --------------------------------------------------------
+    # ========================================================
 
     seen_text = set()
+
 
     for match in matches:
 
@@ -410,13 +449,16 @@ def retrieve_documents(
             {},
         )
 
+
         text = metadata.get(
             "text",
             "",
         )
 
+
         if not text:
             continue
+
 
         # ----------------------------------------------------
         # NORMALIZE TEXT
@@ -426,12 +468,15 @@ def retrieve_documents(
             text.split()
         ).lower()
 
+
         if normalized_text in seen_text:
             continue
+
 
         seen_text.add(
             normalized_text
         )
+
 
         # ----------------------------------------------------
         # SCORE
@@ -442,8 +487,9 @@ def retrieve_documents(
             0,
         )
 
+
         # ----------------------------------------------------
-        # STORE DOCUMENT
+        # STORE RESULT
         # ----------------------------------------------------
 
         documents.append(
@@ -476,12 +522,14 @@ def retrieve_documents(
             }
         )
 
+
         # ----------------------------------------------------
         # STOP AFTER K UNIQUE RESULTS
         # ----------------------------------------------------
 
         if len(documents) >= k:
             break
+
 
     # ========================================================
     # DEBUG OUTPUT
@@ -491,6 +539,7 @@ def retrieve_documents(
     print("=" * 60)
     print("RETRIEVED UNIQUE CHUNKS")
     print("=" * 60)
+
 
     for i, document in enumerate(
         documents,
@@ -521,8 +570,10 @@ def retrieve_documents(
             f"Text:\n{document['text'][:1000]}"
         )
 
+
     print(
         "=" * 60
     )
+
 
     return documents
