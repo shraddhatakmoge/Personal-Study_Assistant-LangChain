@@ -1,6 +1,7 @@
 import sys
 import os
 import html
+import json
 import textwrap
 from pathlib import Path
 
@@ -26,11 +27,85 @@ import requests
 # NOTES
 # ============================================================
 
-from app.tools.notes import (
-    load_notes,
-    delete_note,
-    clear_notes,
-)
+# Notes are read directly from data/notes.json for the UI.
+
+
+# ============================================================
+# NOTES UI STORAGE HELPERS
+# ============================================================
+
+NOTES_FILE = PROJECT_ROOT / "data" / "notes.json"
+
+
+def load_notes_for_ui():
+    """Load notes directly from the JSON file for the Streamlit UI."""
+
+    if not NOTES_FILE.exists():
+        return []
+
+    try:
+        with open(
+            NOTES_FILE,
+            "r",
+            encoding="utf-8",
+        ) as file:
+            notes = json.load(file)
+
+        if not isinstance(notes, list):
+            return []
+
+        return notes
+
+    except (
+        json.JSONDecodeError,
+        OSError,
+    ):
+        return []
+
+
+def save_notes_for_ui(notes):
+    """Save notes directly to the JSON file."""
+
+    NOTES_FILE.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with open(
+        NOTES_FILE,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            notes,
+            file,
+            indent=4,
+            ensure_ascii=False,
+        )
+
+
+def delete_note_for_ui(index):
+    """Delete one note using its zero-based index."""
+
+    notes = load_notes_for_ui()
+
+    if index < 0 or index >= len(notes):
+        return False
+
+    notes.pop(index)
+
+    save_notes_for_ui(notes)
+
+    return True
+
+
+def clear_all_notes_for_ui():
+    """Delete every saved note."""
+
+    save_notes_for_ui([])
+
+    return True
+
 
 
 # ============================================================
@@ -218,11 +293,10 @@ if "uploaded_document" not in st.session_state:
 # ============================================================
 
 try:
-    # Read the actual stored list.
-    # Do NOT parse get_notes(), because get_notes() adds display
-    # numbering and that was causing duplicate "1.", "2.", "3."
-    # text inside the Notes UI.
-    notes = load_notes()
+    # Read the actual stored list directly.
+    # The UI does not depend on delete_note/clear_notes imports,
+    # avoiding the Streamlit Cloud import error.
+    notes = load_notes_for_ui()
 except Exception:
     notes = []
 
@@ -3597,7 +3671,7 @@ if st.session_state.show_notes:
                     use_container_width=True,
                 ):
 
-                    clear_notes.invoke({})
+                    clear_all_notes_for_ui()
 
                     st.session_state.confirm_clear_notes = False
 
@@ -3685,10 +3759,8 @@ if st.session_state.show_notes:
                         help=f"Delete note {index}",
                     ):
 
-                        delete_result = delete_note.invoke(
-                            {
-                                "index": note_index,
-                            }
+                        delete_result = delete_note_for_ui(
+                            note_index
                         )
 
                         # If the deleted note was the last note,

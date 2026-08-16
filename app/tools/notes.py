@@ -1,103 +1,39 @@
-import json
 from pathlib import Path
-
 from langchain_core.tools import tool
 
 
-NOTES_FILE = Path("data/notes.json")
+NOTES_FILE = Path(__file__).resolve().parents[2] / "data" / "notes.txt"
 
 
-# ============================================================
-# LOAD NOTES
-# ============================================================
-
-def load_notes():
-    """Load all saved study notes."""
-
+def load_notes() -> list[str]:
+    """Load all saved notes."""
     if not NOTES_FILE.exists():
         return []
 
-    try:
-        with open(
-            NOTES_FILE,
-            "r",
-            encoding="utf-8",
-        ) as file:
+    text = NOTES_FILE.read_text(encoding="utf-8").strip()
 
-            notes = json.load(file)
-
-        if not isinstance(notes, list):
-            return []
-
-        return notes
-
-    except (
-        json.JSONDecodeError,
-        OSError,
-    ):
+    if not text:
         return []
 
+    return [line for line in text.splitlines() if line.strip()]
 
-# ============================================================
-# SAVE NOTES
-# ============================================================
 
-def save_notes(notes):
-    """Save all notes to the JSON file."""
-
-    NOTES_FILE.parent.mkdir(
-        parents=True,
-        exist_ok=True,
+def _save_notes(notes: list[str]) -> None:
+    """Save notes to disk."""
+    NOTES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    NOTES_FILE.write_text(
+        "\n".join(notes),
+        encoding="utf-8",
     )
 
-    with open(
-        NOTES_FILE,
-        "w",
-        encoding="utf-8",
-    ) as file:
-
-        json.dump(
-            notes,
-            file,
-            indent=4,
-            ensure_ascii=False,
-        )
-
-
-# ============================================================
-# SAVE ONE NOTE
-# ============================================================
-
-@tool
-def save_note(note: str) -> str:
-    """Save a study note for future revision."""
-
-    note = note.strip()
-
-    if not note:
-        return "Cannot save an empty note."
-
-    notes = load_notes()
-
-    notes.append(note)
-
-    save_notes(notes)
-
-    return "Note saved successfully."
-
-
-# ============================================================
-# GET ALL NOTES
-# ============================================================
 
 @tool
 def get_notes() -> str:
-    """Retrieve all saved study notes."""
-
+    """Return all saved notes."""
     notes = load_notes()
 
     if not notes:
-        return "No notes saved yet."
+        return "No notes saved."
 
     return "\n".join(
         f"{i + 1}. {note}"
@@ -105,44 +41,26 @@ def get_notes() -> str:
     )
 
 
-# ============================================================
-# DELETE ONE NOTE
-# ============================================================
-
 @tool
 def delete_note(index: int) -> str:
-    """
-    Delete one study note.
-
-    index is ZERO-BASED:
-        0 = first note
-        1 = second note
-        2 = third note
-    """
-
+    """Delete a note by its 1-based index."""
     notes = load_notes()
 
     if not notes:
-        return "No notes saved yet."
+        return "No notes to delete."
 
-    if index < 0 or index >= len(notes):
-        return "Invalid note index."
+    if index < 1 or index > len(notes):
+        return f"Invalid note number. Choose between 1 and {len(notes)}."
 
-    notes.pop(index)
+    deleted = notes.pop(index - 1)
+    _save_notes(notes)
 
-    save_notes(notes)
+    return f"Deleted note: {deleted}"
 
-    return "Note deleted successfully."
-
-
-# ============================================================
-# DELETE ALL NOTES
-# ============================================================
 
 @tool
 def clear_notes() -> str:
-    """Delete all saved study notes."""
+    """Delete all saved notes."""
+    _save_notes([])
 
-    save_notes([])
-
-    return "All study notes have been cleared."
+    return "All notes cleared."
