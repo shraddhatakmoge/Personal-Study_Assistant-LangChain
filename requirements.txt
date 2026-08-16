@@ -11,3 +11,4 @@ pinecone
 fastapi
 uvicorn
 python-multipart
+pypdf
