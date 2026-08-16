@@ -1,7 +1,11 @@
-langchain
-langchain-groq
-streamlit
-python-dotenv
-pytest
-langchain-community
-ddgs
+# langchain
+# langchain-groq
+# streamlit
+# python-dotenv
+# pytest
+# langchain-community
+# ddgs
+langchain-text-splitters 
+langchain-huggingface 
+langchain-pinecone 
+pinecone

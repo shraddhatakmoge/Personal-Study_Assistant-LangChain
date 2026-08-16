@@ -1,11 +1,152 @@
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import html
 import textwrap
+import requests
 
 import streamlit as st
 
 from app.agent.agent import get_agent
 from app.memory.memory import ConversationMemory
 from app.tools.notes import get_notes
+import os
+
+# ============================================================
+# RAG API
+#
+# The UI talks to FastAPI for document upload and PDF questions.
+# No RAG implementation is imported into the UI.
+# ============================================================
+
+RAG_API_URL = os.getenv(
+    "STUDYMATE_API_URL",
+    "http://127.0.0.1:8000",
+).rstrip("/")
+
+
+def upload_document_to_api(
+    uploaded_file,
+):
+    """Upload the selected document to the FastAPI RAG backend."""
+
+    if not uploaded_file.name.lower().endswith(".pdf"):
+        return {
+            "ok": False,
+            "error": "Only PDF files are currently supported for RAG.",
+        }
+
+    try:
+        file_bytes = uploaded_file.getvalue()
+
+        response = requests.post(
+            f"{RAG_API_URL}/rag/upload",
+            files={
+                "file": (
+                    uploaded_file.name,
+                    file_bytes,
+                    uploaded_file.type or "application/pdf",
+                )
+            },
+            timeout=180,
+        )
+
+        if not response.ok:
+            try:
+                detail = response.json().get(
+                    "detail",
+                    response.text,
+                )
+            except Exception:
+                detail = response.text
+
+            return {
+                "ok": False,
+                "error": str(detail),
+            }
+
+        data = response.json()
+
+        return {
+            "ok": True,
+            "data": data,
+        }
+
+    except requests.RequestException as exc:
+        return {
+            "ok": False,
+            "error": (
+                "Could not connect to StudyMate API. "
+                "Make sure FastAPI is running on "
+                f"{RAG_API_URL}."
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+        }
+
+
+def ask_rag_api(
+    document_id: str,
+    question: str,
+):
+    """Ask the FastAPI RAG backend about the uploaded PDF."""
+
+    try:
+        response = requests.post(
+            f"{RAG_API_URL}/rag/ask",
+            json={
+                "document_id": document_id,
+                "question": question,
+            },
+            timeout=120,
+        )
+
+        if not response.ok:
+            try:
+                detail = response.json().get(
+                    "detail",
+                    response.text,
+                )
+            except Exception:
+                detail = response.text
+
+            return {
+                "ok": False,
+                "error": str(detail),
+            }
+
+        data = response.json()
+
+        return {
+            "ok": True,
+            "data": data,
+        }
+
+    except requests.RequestException:
+        return {
+            "ok": False,
+            "error": (
+                "Could not connect to StudyMate API. "
+                "Make sure FastAPI is running on "
+                f"{RAG_API_URL}."
+            ),
+        }
+
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+        }
 
 
 # ============================================================
@@ -47,6 +188,9 @@ if "show_notes" not in st.session_state:
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = True
 
+if "uploaded_document" not in st.session_state:
+    st.session_state.uploaded_document = None
+
 
 agent = st.session_state.agent
 memory = st.session_state.memory
@@ -59,8 +203,11 @@ memory = st.session_state.memory
 notes_result = get_notes.invoke({})
 
 if notes_result == "No notes saved yet.":
+
     notes = []
+
 else:
+
     notes = [
         line.strip()
         for line in notes_result.splitlines()
@@ -86,7 +233,6 @@ st.markdown(
     body {
         margin: 0 !important;
         padding: 0 !important;
-
         background: #F8F6FC !important;
     }
 
@@ -116,79 +262,113 @@ st.markdown(
 
 
     /* ======================================================
+       NATIVE STREAMLIT SIDEBAR
+
+       DISABLED.
+       We use a custom fixed sidebar so Streamlit's own
+       collapsed/expanded browser state cannot hide it.
+       ====================================================== */
+
+    section[data-testid="stSidebar"] {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+    }
+
+
+    /* ======================================================
        MAIN CONTENT
        ====================================================== */
 
     .block-container {
+
         width: 100% !important;
+
         max-width: none !important;
 
         box-sizing: border-box !important;
 
         padding-top: 18px !important;
+
         padding-left: 42px !important;
+
         padding-right: 42px !important;
-        padding-bottom: 90px !important;
+
+        /* Leave enough scrollable space for the fixed chat input.
+           Without this, the last part of an answer can sit underneath
+           the search bar and look cut off. */
+        padding-bottom: 155px !important;
     }
 
 
     /* ======================================================
-       REMOVE NATIVE STREAMLIT SIDEBAR HEADER
+       OPEN CUSTOM SIDEBAR
+
+       IMPORTANT:
+       Use [class*="..."] instead of exact Streamlit class
+       matching. This is more robust across Streamlit versions.
        ====================================================== */
 
-    [data-testid="stSidebarHeader"] {
-        display: none !important;
+    [class*="st-key-custom_sidebar"] {
 
-        height: 0 !important;
-        min-height: 0 !important;
-        max-height: 0 !important;
+        position: fixed !important;
 
-        padding: 0 !important;
+        top: 0 !important;
+
+        left: 0 !important;
+
+        bottom: 0 !important;
+
+        width: 290px !important;
+
+        height: 100vh !important;
+
+        min-width: 290px !important;
+
+        max-width: 290px !important;
+
+        box-sizing: border-box !important;
+
+        padding: 14px 18px 24px 18px !important;
+
         margin: 0 !important;
-    }
 
-    [data-testid="stSidebarCollapseButton"] {
-        display: none !important;
-    }
-
-    [data-testid="stSidebarCollapsedControl"] {
-        display: none !important;
-    }
-
-    button[aria-label="Close sidebar"],
-    button[aria-label="Open sidebar"],
-    button[aria-label="Expand sidebar"],
-    button[aria-label="Collapse sidebar"] {
-        display: none !important;
-    }
-
-
-    /* ======================================================
-       SIDEBAR OPEN
-       ====================================================== */
-
-    section[data-testid="stSidebar"] {
         background: #FFFFFF !important;
-
-        width: 210px !important;
-        min-width: 210px !important;
-        max-width: 210px !important;
-
-        flex-basis: 210px !important;
 
         border-right: 1px solid #E8E1F2 !important;
 
         box-shadow:
-            2px 0 12px
+            2px 0 14px
             rgba(82, 63, 130, 0.035) !important;
+
+        overflow-y: auto !important;
+
+        overflow-x: hidden !important;
+
+        z-index: 999999 !important;
     }
 
-    section[data-testid="stSidebar"] > div {
-        background: #FFFFFF !important;
 
-        padding: 0 12px 18px 12px !important;
+    [class*="st-key-custom_sidebar"] > div {
 
-        margin: 0 !important;
+        width: 100% !important;
+
+        max-width: 100% !important;
+
+        box-sizing: border-box !important;
+    }
+
+
+    /* Reserve exactly the sidebar width without changing
+       the right-side design. */
+
+    body:has([class*="st-key-custom_sidebar"])
+    .block-container {
+
+        padding-left: 332px !important;
+
+        padding-right: 42px !important;
     }
 
 
@@ -196,57 +376,80 @@ st.markdown(
        OPEN SIDEBAR HAMBURGER
        ====================================================== */
 
-    .st-key-close_sidebar_button {
-        width: 36px !important;
-        height: 36px !important;
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-close_sidebar_button"] {
 
-        margin: 8px 0 14px auto !important;
+        width: 38px !important;
+
+        height: 38px !important;
+
+        margin: 0 0 22px auto !important;
+
         padding: 0 !important;
     }
 
-    .st-key-close_sidebar_button button {
-        width: 36px !important;
-        height: 36px !important;
 
-        min-width: 36px !important;
-        min-height: 36px !important;
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-close_sidebar_button"] button {
+
+        width: 38px !important;
+
+        height: 38px !important;
+
+        min-width: 38px !important;
+
+        min-height: 38px !important;
 
         padding: 0 !important;
+
         margin: 0 !important;
 
         background: #F3EEFF !important;
-        background-color: #F3EEFF !important;
 
-        border: 1px solid #D8C9F5 !important;
-        border-radius: 10px !important;
+        background-color: #F3EEFF !important;
 
         color: #7354D7 !important;
 
+        border: 1px solid #D8C9F5 !important;
+
+        border-radius: 10px !important;
+
         box-shadow:
-            0 3px 10px
+            0 4px 12px
             rgba(115, 84, 215, 0.10) !important;
 
         display: flex !important;
+
         align-items: center !important;
+
         justify-content: center !important;
     }
 
-    .st-key-close_sidebar_button button:hover {
+
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-close_sidebar_button"] button:hover {
+
         background: #EAE1FF !important;
+
         background-color: #EAE1FF !important;
 
-        border-color: #C6B3EF !important;
+        border-color: #C5B1EF !important;
 
         color: #6547C9 !important;
     }
 
-    .st-key-close_sidebar_button button p {
+
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-close_sidebar_button"] button p {
+
         margin: 0 !important;
+
         padding: 0 !important;
 
         color: #7354D7 !important;
 
-        font-size: 18px !important;
+        font-size: 20px !important;
+
         font-weight: 800 !important;
 
         line-height: 1 !important;
@@ -254,31 +457,37 @@ st.markdown(
 
 
     /* ======================================================
-       BRAND
+       SIDEBAR BRAND
        ====================================================== */
 
     .brand-wrapper {
+
         display: flex;
 
         align-items: center;
 
-        gap: 9px;
+        gap: 11px;
 
-        margin: 0 0 20px 0 !important;
-        padding: 0 !important;
+        margin: 0 0 27px 0;
+
+        padding: 0;
     }
 
     .brand-icon {
-        width: 42px;
-        height: 42px;
+
+        width: 48px;
+
+        height: 48px;
 
         flex-shrink: 0;
 
         display: flex;
+
         align-items: center;
+
         justify-content: center;
 
-        border-radius: 12px;
+        border-radius: 14px;
 
         background:
             linear-gradient(
@@ -287,77 +496,31 @@ st.markdown(
                 #B29CF4
             );
 
-        font-size: 21px;
+        font-size: 22px;
 
         box-shadow:
-            0 7px 18px
+            0 8px 22px
             rgba(128, 102, 232, 0.18);
-
-        position: relative;
-    }
-
-    /* ------------------------------------------------------
-       Robot greeting animation
-       ------------------------------------------------------ */
-
-    .robot-greeting {
-        display: inline-flex;
-        align-items: center;
-
-        margin-left: 2px;
-
-        color: #7354D7;
-
-        font-size: 10px;
-        font-weight: 800;
-
-        animation:
-            robot_hi 1.8s ease-in-out infinite;
-    }
-
-    @keyframes robot_hi {
-
-        0% {
-            opacity: 0.45;
-            transform: translateY(1px);
-        }
-
-        25% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        50% {
-            opacity: 0.8;
-            transform: translateY(-1px);
-        }
-
-        75% {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        100% {
-            opacity: 0.45;
-            transform: translateY(1px);
-        }
     }
 
     .brand-title {
+
         color: #292535;
 
-        font-size: 18px;
+        font-size: 19px;
+
         font-weight: 800;
 
         line-height: 1.1;
     }
 
     .brand-subtitle {
+
         margin-top: 4px;
 
         color: #918A9F;
 
-        font-size: 8px;
+        font-size: 9px;
 
         line-height: 1.2;
 
@@ -370,61 +533,78 @@ st.markdown(
        ====================================================== */
 
     .side-section {
-        margin-top: 17px;
-        margin-bottom: 7px;
+
+        margin-top: 20px;
+
+        margin-bottom: 8px;
 
         color: #9992A7;
 
         font-size: 9px;
+
         font-weight: 800;
 
-        letter-spacing: 1.1px;
+        letter-spacing: 1.2px;
     }
 
 
     /* ======================================================
-       NORMAL SIDEBAR BUTTONS
+       SIDEBAR BUTTONS
        ====================================================== */
 
-    .st-key-new_conversation,
-    .st-key-study_notes {
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-new_conversation"],
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-study_notes"] {
+
         width: 100% !important;
 
         margin: 0 !important;
+
         padding: 0 !important;
     }
 
-    .st-key-new_conversation button,
-    .st-key-study_notes button {
+
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-new_conversation"] button,
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-study_notes"] button {
+
         width: 100% !important;
 
-        min-height: 38px !important;
+        min-height: 40px !important;
 
-        padding: 8px 10px !important;
+        padding: 9px 12px !important;
+
         margin: 0 !important;
 
         background: #FFFFFF !important;
+
         background-color: #FFFFFF !important;
 
         color: #514A5D !important;
 
         border: 1px solid #E2DBED !important;
+
         border-radius: 10px !important;
 
         font-size: 12px !important;
+
         font-weight: 600 !important;
 
         line-height: 1.2 !important;
 
         box-shadow: none !important;
-
-        appearance: none !important;
-        -webkit-appearance: none !important;
     }
 
-    .st-key-new_conversation button:hover,
-    .st-key-study_notes button:hover {
+
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-new_conversation"] button:hover,
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-study_notes"] button:hover {
+
         background: #F6F2FF !important;
+
         background-color: #F6F2FF !important;
 
         color: #6F55D4 !important;
@@ -432,8 +612,12 @@ st.markdown(
         border-color: #C9BBEE !important;
     }
 
-    .st-key-new_conversation button p,
-    .st-key-study_notes button p {
+
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-new_conversation"] button p,
+    [class*="st-key-custom_sidebar"]
+    [class*="st-key-study_notes"] button p {
+
         color: inherit !important;
 
         font-size: 12px !important;
@@ -447,11 +631,12 @@ st.markdown(
        ====================================================== */
 
     .capability {
-        margin: 8px 0;
+
+        margin: 9px 0;
 
         color: #777080;
 
-        font-size: 10.5px;
+        font-size: 11px;
 
         line-height: 1.3;
 
@@ -460,91 +645,130 @@ st.markdown(
 
 
     /* ======================================================
-       COLLAPSED SIDEBAR
+       CLOSED RAIL
        ====================================================== */
 
-    body:has(.st-key-rail_open_button)
-    section[data-testid="stSidebar"] {
+    [class*="st-key-custom_rail"] {
+
+        position: fixed !important;
+
+        top: 0 !important;
+
+        left: 0 !important;
+
+        bottom: 0 !important;
+
         width: 58px !important;
-        min-width: 58px !important;
-        max-width: 58px !important;
 
-        flex-basis: 58px !important;
+        height: 100vh !important;
 
-        padding: 0 !important;
+        box-sizing: border-box !important;
+
+        padding: 16px 9px !important;
+
+        margin: 0 !important;
+
+        background: #FFFFFF !important;
+
+        border-right: 1px solid #E8E1F2 !important;
+
+        box-shadow:
+            2px 0 12px
+            rgba(82, 63, 130, 0.035) !important;
+
+        z-index: 999999 !important;
 
         overflow: hidden !important;
     }
 
-    body:has(.st-key-rail_open_button)
-    section[data-testid="stSidebar"] > div {
-        width: 58px !important;
-        min-width: 58px !important;
-        max-width: 58px !important;
 
-        padding: 0 !important;
+    body:has([class*="st-key-custom_rail"])
+    .block-container {
 
-        margin: 0 !important;
+        padding-left: 82px !important;
 
-        overflow: hidden !important;
+        padding-right: 42px !important;
     }
 
 
     /* ======================================================
-       CLOSED HAMBURGER
+       CLOSED RAIL HAMBURGER
        ====================================================== */
 
-    .st-key-rail_open_button {
-        width: 38px !important;
-        height: 38px !important;
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_open_button"] {
 
-        margin: 10px auto 10px auto !important;
+        width: 40px !important;
+
+        height: 40px !important;
+
+        margin: 0 0 20px 0 !important;
+
         padding: 0 !important;
     }
 
-    .st-key-rail_open_button button {
-        width: 38px !important;
-        height: 38px !important;
 
-        min-width: 38px !important;
-        min-height: 38px !important;
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_open_button"] button {
+
+        width: 40px !important;
+
+        height: 40px !important;
+
+        min-width: 40px !important;
+
+        min-height: 40px !important;
 
         padding: 0 !important;
+
         margin: 0 !important;
 
         background: #F3EEFF !important;
-        background-color: #F3EEFF !important;
 
-        border: 1px solid #D8C9F5 !important;
-        border-radius: 10px !important;
+        background-color: #F3EEFF !important;
 
         color: #7354D7 !important;
 
+        border: 1px solid #D8C9F5 !important;
+
+        border-radius: 10px !important;
+
         box-shadow:
-            0 3px 10px
+            0 4px 12px
             rgba(115, 84, 215, 0.10) !important;
 
         display: flex !important;
+
         align-items: center !important;
+
         justify-content: center !important;
     }
 
-    .st-key-rail_open_button button:hover {
+
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_open_button"] button:hover {
+
         background: #EAE1FF !important;
+
         background-color: #EAE1FF !important;
 
-        border-color: #C6B3EF !important;
+        border-color: #C5B1EF !important;
 
         color: #6547C9 !important;
     }
 
-    .st-key-rail_open_button button p {
+
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_open_button"] button p {
+
         margin: 0 !important;
+
         padding: 0 !important;
 
         color: #7354D7 !important;
 
-        font-size: 18px !important;
+        font-size: 19px !important;
+
         font-weight: 800 !important;
 
         line-height: 1 !important;
@@ -552,133 +776,133 @@ st.markdown(
 
 
     /* ======================================================
-       CLOSED RAIL BUTTONS
+       RAIL BUTTONS
        ====================================================== */
 
-    .st-key-rail_workspace,
-    .st-key-rail_search,
-    .st-key-rail_notes,
-    .st-key-rail_explain,
-    .st-key-rail_research,
-    .st-key-rail_revision {
-        width: 38px !important;
-        height: 38px !important;
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_workspace"],
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_search"],
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_notes"],
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_explain"],
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_research"],
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_revision"] {
 
-        margin: 5px auto !important;
+        width: 40px !important;
+
+        height: 40px !important;
+
+        margin: 0 0 10px 0 !important;
+
         padding: 0 !important;
     }
 
-    .st-key-rail_workspace button,
-    .st-key-rail_search button,
-    .st-key-rail_notes button,
-    .st-key-rail_explain button,
-    .st-key-rail_research button,
-    .st-key-rail_revision button {
-        width: 38px !important;
-        height: 38px !important;
 
-        min-width: 38px !important;
-        min-height: 38px !important;
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_workspace"] button,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_search"] button,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_notes"] button,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_explain"] button,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_research"] button,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_revision"] button {
+
+        width: 40px !important;
+
+        height: 40px !important;
+
+        min-width: 40px !important;
+
+        min-height: 40px !important;
 
         padding: 0 !important;
+
         margin: 0 !important;
 
         background: #F3EEFF !important;
-        background-color: #F3EEFF !important;
 
-        border: 1px solid #D8C9F5 !important;
-        border-radius: 10px !important;
+        background-color: #F3EEFF !important;
 
         color: #7354D7 !important;
 
-        box-shadow: none !important;
+        border: 1px solid #D8C9F5 !important;
+
+        border-radius: 11px !important;
+
+        box-shadow:
+            0 3px 10px
+            rgba(115, 84, 215, 0.08) !important;
 
         display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
 
-        appearance: none !important;
-        -webkit-appearance: none !important;
+        align-items: center !important;
+
+        justify-content: center !important;
     }
 
-    .st-key-rail_workspace button:hover,
-    .st-key-rail_search button:hover,
-    .st-key-rail_notes button:hover,
-    .st-key-rail_explain button:hover,
-    .st-key-rail_research button:hover,
-    .st-key-rail_revision button:hover {
+
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_workspace"] button:hover,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_search"] button:hover,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_notes"] button:hover,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_explain"] button:hover,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_research"] button:hover,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_revision"] button:hover {
+
         background: #EAE1FF !important;
+
         background-color: #EAE1FF !important;
 
-        border-color: #C6B3EF !important;
+        border-color: #C5B1EF !important;
 
         color: #6547C9 !important;
     }
 
-    .st-key-rail_workspace button p,
-    .st-key-rail_search button p,
-    .st-key-rail_notes button p,
-    .st-key-rail_explain button p,
-    .st-key-rail_research button p,
-    .st-key-rail_revision button p {
+
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_workspace"] button p,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_search"] button p,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_notes"] button p,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_explain"] button p,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_research"] button p,
+    [class*="st-key-custom_rail"]
+    [class*="st-key-rail_revision"] button p {
+
         margin: 0 !important;
+
         padding: 0 !important;
 
         color: #7354D7 !important;
 
-        font-size: 16px !important;
+        font-size: 17px !important;
 
         line-height: 1 !important;
     }
 
 
     /* ======================================================
-       REMOVE STREAMLIT VERTICAL GAPS AROUND RAIL
-       ====================================================== */
-
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_open_button),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_workspace),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_search),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_notes),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_explain),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_research),
-    section[data-testid="stSidebar"]
-    div[data-testid="stElementContainer"]:has(.st-key-rail_revision) {
-        margin: 0 !important;
-        padding: 0 !important;
-
-        height: 48px !important;
-
-        min-height: 48px !important;
-        max-height: 48px !important;
-    }
-
-
-    /* ======================================================
-       RAIL DIVIDER
-       ====================================================== */
-
-    .rail-divider {
-        width: 30px !important;
-        height: 1px !important;
-
-        margin: 7px auto !important;
-
-        background: #E5DDF0 !important;
-    }
-
-
-    /* ======================================================
-       WELCOME
+       WELCOME CARD
        ====================================================== */
 
     .welcome-card {
+
         width: 100%;
 
         box-sizing: border-box;
@@ -697,6 +921,7 @@ st.markdown(
     }
 
     .welcome-title {
+
         margin-bottom: 8px;
 
         color: #7055D4;
@@ -709,6 +934,7 @@ st.markdown(
     }
 
     .welcome-text {
+
         max-width: 1100px;
 
         color: #858091;
@@ -724,6 +950,7 @@ st.markdown(
        ====================================================== */
 
     .status-card {
+
         display: flex;
 
         align-items: center;
@@ -744,7 +971,9 @@ st.markdown(
     }
 
     .status-dot {
+
         width: 8px;
+
         height: 8px;
 
         flex-shrink: 0;
@@ -759,6 +988,7 @@ st.markdown(
     }
 
     .status-text {
+
         color: #777080;
 
         font-size: 12px;
@@ -770,6 +1000,7 @@ st.markdown(
        ====================================================== */
 
     .action-card {
+
         min-height: 148px;
 
         height: 100%;
@@ -787,9 +1018,15 @@ st.markdown(
         box-shadow:
             0 4px 16px
             rgba(85, 65, 135, 0.035);
+
+        transition:
+            transform 0.15s ease,
+            box-shadow 0.15s ease,
+            border-color 0.15s ease;
     }
 
     .action-card:hover {
+
         transform: translateY(-2px);
 
         border-color: #D8CCF2;
@@ -800,12 +1037,14 @@ st.markdown(
     }
 
     .action-icon {
+
         font-size: 21px;
 
         line-height: 1;
     }
 
     .action-title {
+
         margin-top: 8px;
 
         color: #40394D;
@@ -816,6 +1055,7 @@ st.markdown(
     }
 
     .action-description {
+
         margin-top: 5px;
 
         color: #8C8597;
@@ -827,10 +1067,11 @@ st.markdown(
 
 
     /* ======================================================
-       PROMPT
+       PROMPT HINT
        ====================================================== */
 
     .prompt-hint {
+
         padding: 0 8px;
 
         color: #9A93A5;
@@ -843,6 +1084,7 @@ st.markdown(
     }
 
     .prompt-hint strong {
+
         color: #756B82;
 
         font-weight: 600;
@@ -850,10 +1092,11 @@ st.markdown(
 
 
     /* ======================================================
-       CHAT
+       CHAT MESSAGES
        ====================================================== */
 
     [data-testid="stChatMessage"] {
+
         margin-bottom: 10px !important;
 
         background: #FFFFFF !important;
@@ -868,6 +1111,7 @@ st.markdown(
     }
 
     [data-testid="stChatMessageContent"] {
+
         color: #393342 !important;
 
         font-size: 14px !important;
@@ -878,10 +1122,35 @@ st.markdown(
 
     /* ======================================================
        CHAT INPUT
+
+       FINAL FIX:
+       The custom sidebar is fixed at 290px on the left.
+       The bottom chat area must therefore occupy ONLY the
+       remaining viewport width.
+
+       Do NOT use calc(50% + ...), translateX(), or an invalid
+       margin-right value here. Those were causing the input
+       to overflow/crop on the right.
        ====================================================== */
 
     [data-testid="stBottom"] {
+
+        position: fixed !important;
+
+        left: 290px !important;
+
+        right: 0 !important;
+
+        bottom: 0 !important;
+
+        width: auto !important;
+
+        max-width: none !important;
+
+        box-sizing: border-box !important;
+
         background: #F8F6FC !important;
+
         background-color: #F8F6FC !important;
 
         border-top: 1px solid #E8E1F2 !important;
@@ -889,39 +1158,52 @@ st.markdown(
         box-shadow: none !important;
 
         padding-top: 7px !important;
+
         padding-bottom: 12px !important;
+
+        padding-left: 0 !important;
+
+        padding-right: 0 !important;
     }
 
     [data-testid="stBottom"] > div {
+
+        width: 100% !important;
+
+        max-width: none !important;
+
+        box-sizing: border-box !important;
+
         background: #F8F6FC !important;
+
         background-color: #F8F6FC !important;
 
         box-shadow: none !important;
     }
 
-    [data-testid="stBottom"] section {
-        background: #F8F6FC !important;
-        background-color: #F8F6FC !important;
-    }
+    [data-testid="stBottom"] [data-testid="stChatInput"] {
 
-    [data-testid="stBottom"] form {
-        background: transparent !important;
-
-        border: none !important;
-
-        box-shadow: none !important;
-    }
-
-    [data-testid="stChatInput"] {
-        width: min(980px, 90%) !important;
+        width: min(980px, calc(100% - 80px)) !important;
 
         max-width: 980px !important;
 
-        margin: 0 auto !important;
+        box-sizing: border-box !important;
+
+        margin-left: auto !important;
+
+        margin-right: auto !important;
+
+        transform: none !important;
     }
 
-    [data-testid="stChatInput"] > div {
+    [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+
+        width: 100% !important;
+
+        box-sizing: border-box !important;
+
         background: #FFFFFF !important;
+
         background-color: #FFFFFF !important;
 
         border: 1px solid #DCD3ED !important;
@@ -933,8 +1215,10 @@ st.markdown(
             rgba(80, 60, 130, 0.07) !important;
     }
 
-    [data-testid="stChatInput"] textarea {
+    [data-testid="stBottom"] [data-testid="stChatInput"] textarea {
+
         background: #FFFFFF !important;
+
         background-color: #FFFFFF !important;
 
         color: #302A3C !important;
@@ -942,45 +1226,78 @@ st.markdown(
         font-size: 14px !important;
     }
 
-    [data-testid="stChatInput"] textarea::placeholder {
+    [data-testid="stBottom"] [data-testid="stChatInput"] textarea::placeholder {
+
         color: #A29BAB !important;
     }
 
 
     /* ======================================================
-       PURPLE CHAT SEND ARROW
+       PURPLE CHAT INPUT BUTTON
        ====================================================== */
 
-    [data-testid="stChatInput"] button {
+    [data-testid="stBottom"] [data-testid="stChatInput"] button {
+
         background: #F3EEFF !important;
+
         background-color: #F3EEFF !important;
 
-        border: 1px solid #E0D5F4 !important;
+        border: 1px solid #D8C9F5 !important;
 
         color: #7354D7 !important;
+
+        box-shadow: none !important;
     }
 
-    [data-testid="stChatInput"] button:hover {
+    [data-testid="stBottom"] [data-testid="stChatInput"] button:hover {
+
         background: #EAE1FF !important;
+
         background-color: #EAE1FF !important;
 
-        border-color: #CDBDEE !important;
+        border-color: #C5B1EF !important;
 
         color: #6547C9 !important;
     }
 
-    [data-testid="stChatInput"] button svg {
+    [data-testid="stBottom"] [data-testid="stChatInput"] button svg {
+
         color: #7354D7 !important;
 
         stroke: #7354D7 !important;
-
-        fill: none !important;
     }
 
-    [data-testid="stChatInput"] button:hover svg {
-        color: #6547C9 !important;
 
-        stroke: #6547C9 !important;
+    /* ======================================================
+       DOCUMENT STATUS
+       ====================================================== */
+
+    .document-status {
+
+        width: min(980px, 90%);
+
+        box-sizing: border-box;
+
+        margin: 0 auto 7px auto;
+
+        padding: 7px 12px;
+
+        background: #F3EEFF;
+
+        border: 1px solid #DED3F3;
+
+        border-radius: 10px;
+
+        color: #6D55C5;
+
+        font-size: 11px;
+
+        line-height: 1.3;
+    }
+
+    .document-status strong {
+
+        color: #5840B5;
     }
 
 
@@ -989,6 +1306,7 @@ st.markdown(
        ====================================================== */
 
     .note-card {
+
         margin-bottom: 9px;
 
         padding: 14px 16px;
@@ -1006,9 +1324,14 @@ st.markdown(
         font-size: 13px;
 
         line-height: 1.55;
+
+        box-shadow:
+            0 3px 12px
+            rgba(85, 65, 135, 0.025);
     }
 
     .note-number {
+
         color: #765DD5;
 
         font-weight: 700;
@@ -1016,18 +1339,21 @@ st.markdown(
 
 
     /* ======================================================
-       STREAMLIT GENERAL SPACING
+       STREAMLIT SPACING
        ====================================================== */
 
     .main .element-container {
+
         margin-bottom: 0 !important;
     }
 
     .main [data-testid="stVerticalBlock"] {
+
         gap: 0.25rem !important;
     }
 
     .main [data-testid="stHorizontalBlock"] {
+
         gap: 1rem !important;
     }
 
@@ -1038,36 +1364,66 @@ st.markdown(
 
     @media (max-width: 900px) {
 
-        section[data-testid="stSidebar"] {
-            width: 58px !important;
-            min-width: 58px !important;
-            max-width: 58px !important;
+        [class*="st-key-custom_sidebar"] {
+
+            width: 260px !important;
+
+            min-width: 260px !important;
+
+            max-width: 260px !important;
         }
 
+        body:has([class*="st-key-custom_sidebar"])
         .block-container {
-            padding-top: 15px !important;
-            padding-left: 18px !important;
+
+            padding-left: 278px !important;
+
             padding-right: 18px !important;
         }
 
+        body:has([class*="st-key-custom_rail"])
+        .block-container {
+
+            padding-left: 72px !important;
+
+            padding-right: 18px !important;
+        }
+
+        .block-container {
+
+            padding-top: 15px !important;
+
+            padding-bottom: 155px !important;
+        }
+
         .welcome-card {
+
             padding: 22px;
         }
 
         .welcome-title {
+
             font-size: 25px;
         }
 
         .welcome-text {
+
             font-size: 12px;
         }
 
         .action-card {
+
             min-height: 108px;
         }
 
         [data-testid="stChatInput"] {
+
             width: 94% !important;
+        }
+
+        .document-status {
+
+            width: 94%;
         }
     }
 
@@ -1078,133 +1434,17 @@ st.markdown(
 
 
 # ============================================================
-# SIDEBAR
+# CUSTOM SIDEBAR / RAIL
+#
+# IMPORTANT:
+# We deliberately do NOT use st.sidebar here.
+# Streamlit's native sidebar can retain a collapsed browser
+# state. This custom container cannot be hidden by that state.
 # ============================================================
 
-with st.sidebar:
+if st.session_state.sidebar_open:
 
-    # ========================================================
-    # COLLAPSED RAIL
-    # ========================================================
-
-    if not st.session_state.sidebar_open:
-
-        # ----------------------------------------------------
-        # HAMBURGER
-        # ----------------------------------------------------
-
-        if st.button(
-            "☰",
-            key="rail_open_button",
-            help="Open sidebar",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # WORKSPACE
-        # ----------------------------------------------------
-
-        if st.button(
-            "▦",
-            key="rail_workspace",
-            help="Workspace",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # SEARCH
-        # ----------------------------------------------------
-
-        if st.button(
-            "⌕",
-            key="rail_search",
-            help="Search",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # DIVIDER
-        # ----------------------------------------------------
-
-        render_html(
-            """
-            <div class="rail-divider"></div>
-            """
-        )
-
-
-        # ----------------------------------------------------
-        # NOTES
-        # ----------------------------------------------------
-
-        if st.button(
-            "📝",
-            key="rail_notes",
-            help="Study Notes",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.session_state.show_notes = True
-
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # EXPLAIN
-        # ----------------------------------------------------
-
-        if st.button(
-            "💡",
-            key="rail_explain",
-            help="Explain concepts",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # RESEARCH
-        # ----------------------------------------------------
-
-        if st.button(
-            "🔎",
-            key="rail_research",
-            help="Research topics",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # REVISION
-        # ----------------------------------------------------
-
-        if st.button(
-            "🎯",
-            key="rail_revision",
-            help="Help with revision",
-        ):
-
-            st.session_state.sidebar_open = True
-            st.rerun()
-
-
-    # ========================================================
-    # OPEN SIDEBAR
-    # ========================================================
-
-    else:
+    with st.container(key="custom_sidebar"):
 
         # ----------------------------------------------------
         # HAMBURGER
@@ -1217,6 +1457,7 @@ with st.sidebar:
         ):
 
             st.session_state.sidebar_open = False
+
             st.rerun()
 
 
@@ -1244,8 +1485,6 @@ with st.sidebar:
 
                 </div>
 
-              
-
             </div>
             """
         )
@@ -1272,6 +1511,8 @@ with st.sidebar:
             st.session_state.messages = []
 
             st.session_state.show_notes = False
+
+            st.session_state.uploaded_document = None
 
             st.rerun()
 
@@ -1335,6 +1576,120 @@ with st.sidebar:
             """
         )
 
+else:
+
+    # ========================================================
+    # CLOSED RAIL
+    # ========================================================
+
+    with st.container(key="custom_rail"):
+
+        # ----------------------------------------------------
+        # OPEN SIDEBAR
+        # ----------------------------------------------------
+
+        if st.button(
+            "☰",
+            key="rail_open_button",
+            help="Open sidebar",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # WORKSPACE
+        # ----------------------------------------------------
+
+        if st.button(
+            "▦",
+            key="rail_workspace",
+            help="Workspace",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # SEARCH
+        # ----------------------------------------------------
+
+        if st.button(
+            "⌕",
+            key="rail_search",
+            help="Search",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # NOTES
+        # ----------------------------------------------------
+
+        if st.button(
+            "📝",
+            key="rail_notes",
+            help="Study Notes",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.session_state.show_notes = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # EXPLAIN
+        # ----------------------------------------------------
+
+        if st.button(
+            "💡",
+            key="rail_explain",
+            help="Explain concepts",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # RESEARCH
+        # ----------------------------------------------------
+
+        if st.button(
+            "🔎",
+            key="rail_research",
+            help="Research topics",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
+
+        # ----------------------------------------------------
+        # REVISION
+        # ----------------------------------------------------
+
+        if st.button(
+            "🎯",
+            key="rail_revision",
+            help="Help with revision",
+        ):
+
+            st.session_state.sidebar_open = True
+
+            st.rerun()
+
 
 # ============================================================
 # NOTES PAGE
@@ -1367,6 +1722,7 @@ if st.session_state.show_notes:
     ):
 
         st.session_state.show_notes = False
+
         st.rerun()
 
 
@@ -1435,7 +1791,6 @@ if not st.session_state.messages:
         """
     )
 
-
     st.write("")
 
 
@@ -1456,7 +1811,6 @@ if not st.session_state.messages:
         </div>
         """
     )
-
 
     st.write("")
 
@@ -1571,7 +1925,7 @@ if not st.session_state.messages:
 
 
     # --------------------------------------------------------
-    # PROMPT HINT
+    # EXAMPLE PROMPTS
     # --------------------------------------------------------
 
     render_html(
@@ -1617,28 +1971,185 @@ for message in st.session_state.messages:
 
 
 # ============================================================
-# CHAT INPUT
+# DOCUMENT STATUS
 # ============================================================
 
-user_input = st.chat_input(
-    "Ask anything you're studying..."
+if st.session_state.uploaded_document:
+
+    document_name = html.escape(
+        st.session_state.uploaded_document["name"]
+    )
+
+    render_html(
+        f"""
+        <div class="document-status">
+
+            📄
+
+            <strong>
+                {document_name}
+            </strong>
+
+            &nbsp; · &nbsp;
+
+            Attached to this study session
+
+        </div>
+        """
+    )
+
+
+# ============================================================
+# CHAT INPUT
+#
+# UI is unchanged.
+# Uploaded documents are sent to FastAPI for RAG processing.
+# ============================================================
+
+chat_submission = st.chat_input(
+    "Ask anything you're studying...",
+    key="study_chat_input",
+    accept_file=True,
+    file_type=[
+        "pdf",
+        "docx",
+        "txt",
+    ],
 )
 
 
 # ============================================================
-# HANDLE MESSAGE
+# HANDLE CHAT SUBMISSION
 # ============================================================
 
-if user_input:
+if chat_submission:
 
     # --------------------------------------------------------
-    # USER
+    # TEXT
     # --------------------------------------------------------
+
+    user_input = getattr(
+        chat_submission,
+        "text",
+        "",
+    )
+
+    if user_input is None:
+
+        user_input = ""
+
+    user_input = user_input.strip()
+
+
+    # --------------------------------------------------------
+    # FILE
+    # --------------------------------------------------------
+
+    uploaded_files = getattr(
+        chat_submission,
+        "files",
+        [],
+    )
+
+
+    if uploaded_files:
+
+        uploaded_file = uploaded_files[0]
+
+        # ----------------------------------------------------
+        # SEND DOCUMENT TO FASTAPI / RAG
+        # ----------------------------------------------------
+
+        upload_result = upload_document_to_api(
+            uploaded_file
+        )
+
+        if not upload_result["ok"]:
+
+            st.error(
+                f"PDF upload failed: {upload_result['error']}"
+            )
+
+            st.stop()
+
+        rag_data = upload_result["data"]
+
+        st.session_state.uploaded_document = {
+
+            "name": uploaded_file.name,
+
+            "type": uploaded_file.type,
+
+            "size": uploaded_file.size,
+
+            "bytes": uploaded_file.getvalue(),
+
+            "document_id": rag_data["document_id"],
+
+            "chunks": rag_data.get("chunks", 0),
+
+        }
+
+
+    # --------------------------------------------------------
+    # FILE ONLY
+    # --------------------------------------------------------
+
+    if uploaded_files and not user_input:
+
+        file_name = uploaded_files[0].name
+
+        attachment_message = (
+            f"📄 **Uploaded `{file_name}`**\n\n"
+            "The document is attached to this study session. "
+            "You can now ask questions about it."
+        )
+
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": attachment_message,
+            }
+        )
+
+        with st.chat_message("user"):
+
+            st.markdown(
+                attachment_message
+            )
+
+        st.stop()
+
+
+    # --------------------------------------------------------
+    # EMPTY
+    # --------------------------------------------------------
+
+    if not user_input:
+
+        st.stop()
+
+
+    # --------------------------------------------------------
+    # USER MESSAGE
+    # --------------------------------------------------------
+
+    display_user_message = user_input
+
+    if uploaded_files:
+
+        file_name = uploaded_files[0].name
+
+        display_user_message = (
+            f"📄 **{file_name}**\n\n"
+            f"{user_input}"
+        )
+
 
     st.session_state.messages.append(
         {
             "role": "user",
-            "content": user_input,
+            "content": display_user_message,
         }
     )
 
@@ -1646,57 +2157,159 @@ if user_input:
     with st.chat_message("user"):
 
         st.markdown(
-            user_input
+            display_user_message
         )
 
 
     # --------------------------------------------------------
-    # AGENT
+    # RAG / AGENT
+    #
+    # If a PDF is attached to this session, ask FastAPI.
+    # Otherwise keep the existing agent behavior exactly as-is.
     # --------------------------------------------------------
 
     try:
 
-        response = agent.invoke(
-            {
-                "messages": (
-                    memory.get_messages()
-                    + [
-                        {
-                            "role": "user",
-                            "content": user_input,
-                        }
-                    ]
-                )
-            }
+        uploaded_document = (
+            st.session_state.uploaded_document
         )
 
-
-        # ----------------------------------------------------
-        # MEMORY
-        # ----------------------------------------------------
-
-        memory.add_messages(
-            response["messages"]
-        )
-
-
-        # ----------------------------------------------------
-        # RESPONSE
-        # ----------------------------------------------------
-
-        final_message = response["messages"][-1]
-
-        final_response = final_message.content
-
-
-        if not isinstance(
-            final_response,
-            str,
+        if uploaded_document and uploaded_document.get(
+            "document_id"
         ):
 
-            final_response = str(
-                final_response
+            rag_result = ask_rag_api(
+                document_id=uploaded_document["document_id"],
+                question=user_input,
             )
+
+            if not rag_result["ok"]:
+
+                raise RuntimeError(
+                    rag_result["error"]
+                )
+
+            rag_data = rag_result["data"]
+
+            final_response = rag_data.get(
+                "answer",
+                "",
+            )
+
+            sources = rag_data.get(
+                "sources",
+                [],
+            )
+
+            sources = rag_data.get(
+    "sources",
+    [],
+)
+
+            if sources:
+            
+                source_lines = []
+                seen_sources = set()
+            
+                for source in sources:
+                
+                    filename = source.get(
+                        "filename",
+                        "unknown",
+                    )
+            
+                    page = source.get(
+                        "page_label",
+                        source.get(
+                            "page",
+                            None,
+                        ),
+                    )
+            
+                    source_key = (
+                        filename,
+                        page,
+                    )
+            
+                    if source_key in seen_sources:
+                        continue
+                    
+                    seen_sources.add(
+                        source_key
+                    )
+            
+                    if page is not None:
+                    
+                        source_lines.append(
+                            f"- {filename} — page {page}"
+                        )
+            
+                    else:
+                    
+                        source_lines.append(
+                            f"- {filename}"
+                        )
+            
+                if source_lines:
+                
+                    final_response = (
+                        f"{final_response}\n\n"
+                        "**Sources:**\n"
+                        + "\n".join(source_lines)
+                    )
+
+            if not isinstance(
+                final_response,
+                str,
+            ):
+
+                final_response = str(
+                    final_response
+                )
+
+        else:
+
+            response = agent.invoke(
+                {
+                    "messages": (
+                        memory.get_messages()
+                        + [
+                            {
+                                "role": "user",
+                                "content": user_input,
+                            }
+                        ]
+                    )
+                }
+            )
+
+
+            # ------------------------------------------------
+            # MEMORY
+            # ------------------------------------------------
+
+            memory.add_messages(
+                response["messages"]
+            )
+
+
+            # ------------------------------------------------
+            # RESPONSE
+            # ------------------------------------------------
+
+            final_message = response["messages"][-1]
+
+            final_response = final_message.content
+
+
+            if not isinstance(
+                final_response,
+                str,
+            ):
+
+                final_response = str(
+                    final_response
+                )
 
 
         # ----------------------------------------------------
