@@ -183,6 +183,7 @@ if "show_notes" not in st.session_state:
 
 # Start CLOSED. On phones this shows only the compact rail.
 # Tapping the purple hamburger opens the full sidebar overlay.
+# Fresh sessions start with the compact rail closed.
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = False
 
@@ -1740,6 +1741,302 @@ st.markdown(
         [data-testid="stBottom"] {
             padding-left: 7px !important;
             padding-right: 7px !important;
+        }
+    }
+
+
+    /* ======================================================
+       FINAL RESPONSIVE ALIGNMENT OVERRIDES
+       ------------------------------------------------------
+       These rules intentionally come last so they win over
+       Streamlit's changing layout styles.
+       ====================================================== */
+
+    /* Keep the main Streamlit surface flush with the viewport.
+       The custom rail itself is fixed and must not create an
+       extra hidden left offset. */
+    main,
+    [data-testid="stAppViewContainer"] main {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .main .block-container,
+    [data-testid="stAppViewContainer"] .block-container {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        max-width: none !important;
+    }
+
+    /* ======================================================
+       CLOSED RAIL — DESKTOP
+       ====================================================== */
+
+    [class*="st-key-custom_rail"] {
+        width: 72px !important;
+        min-width: 72px !important;
+        max-width: 72px !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    body:has([class*="st-key-custom_rail"]) .block-container {
+        padding-left: 96px !important;
+        padding-right: 42px !important;
+    }
+
+    /* ======================================================
+       OPEN SIDEBAR — DESKTOP
+       ====================================================== */
+
+    [class*="st-key-custom_sidebar"] {
+        width: 290px !important;
+        min-width: 290px !important;
+        max-width: 290px !important;
+    }
+
+    body:has([class*="st-key-custom_sidebar"]) .block-container {
+        padding-left: 332px !important;
+        padding-right: 42px !important;
+    }
+
+    /* ======================================================
+       BOTTOM CHAT BAR — DESKTOP
+       ====================================================== */
+
+    [data-testid="stBottom"] {
+        left: 290px !important;
+        right: 0 !important;
+        width: auto !important;
+    }
+
+    body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+        left: 72px !important;
+    }
+
+    /* ======================================================
+       MOBILE
+       ====================================================== */
+
+    @media (max-width: 900px) {
+
+        html,
+        body,
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewContainer"] > .main,
+        main {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: hidden !important;
+        }
+
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            padding-top: 12px !important;
+            padding-right: 14px !important;
+            padding-bottom: 175px !important;
+            padding-left: 76px !important;
+        }
+
+        /* Compact ChatGPT-like rail. */
+        [class*="st-key-custom_rail"] {
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+
+            width: 64px !important;
+            min-width: 64px !important;
+            max-width: 64px !important;
+
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+
+            padding: 16px 10px !important;
+            margin: 0 !important;
+
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            z-index: 1000000 !important;
+        }
+
+        /* Make every rail button actually fit inside 64px. */
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_workspace"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_explain"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_research"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_revision"] {
+            width: 44px !important;
+            max-width: 44px !important;
+            min-width: 44px !important;
+            height: 44px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        [class*="st-key-custom_rail"] button {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+            box-sizing: border-box !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            padding-left: 76px !important;
+            padding-right: 14px !important;
+        }
+
+        /* Main cards occupy only the real content area. */
+        [data-testid="stHorizontalBlock"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .welcome-card,
+        .status-card,
+        .action-card,
+        .prompt-hint,
+        [data-testid="stChatMessage"],
+        .document-status,
+        .note-card {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        /* The fixed composer aligns with the content edge,
+           not with the browser's full left edge. */
+        [data-testid="stBottom"] {
+            left: 64px !important;
+            right: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+
+            padding: 7px 10px 10px 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stBottom"] > div {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        [data-testid="stBottom"] [data-testid="stChatInput"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Prevent the example prompt from disappearing under
+           the fixed composer. */
+        .prompt-hint {
+            margin-bottom: 18px !important;
+            padding-bottom: 8px !important;
+        }
+
+        /* Open drawer is an overlay. It does not alter the
+           underlying page width. */
+        [class*="st-key-custom_sidebar"] {
+            top: 0 !important;
+            left: 0 !important;
+            bottom: 0 !important;
+
+            width: min(320px, 86vw) !important;
+            min-width: min(320px, 86vw) !important;
+            max-width: min(320px, 86vw) !important;
+
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+
+            box-sizing: border-box !important;
+            z-index: 1000001 !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) .block-container {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
+            right: 0 !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+
+        .main .block-container,
+        [data-testid="stAppViewContainer"] .block-container {
+            padding-left: 72px !important;
+            padding-right: 10px !important;
+            padding-bottom: 175px !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) .block-container {
+            padding-left: 72px !important;
+            padding-right: 10px !important;
+        }
+
+        [class*="st-key-custom_rail"] {
+            width: 60px !important;
+            min-width: 60px !important;
+            max-width: 60px !important;
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_workspace"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_explain"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_research"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_revision"],
+        [class*="st-key-custom_rail"] button {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+        }
+
+        body:has([class*="st-key-custom_rail"]) [data-testid="stBottom"] {
+            left: 60px !important;
+        }
+
+        body:has([class*="st-key-custom_sidebar"]) [data-testid="stBottom"] {
+            left: 0 !important;
         }
     }
 
