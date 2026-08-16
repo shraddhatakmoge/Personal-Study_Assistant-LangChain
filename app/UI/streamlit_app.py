@@ -13,10 +13,8 @@ import requests
 
 import streamlit as st
 
-from app.agent.agent import get_agent
-from app.memory.memory import ConversationMemory
-from app.tools.notes import get_notes
 import os
+from app.tools.notes import get_notes
 
 # ============================================================
 # RAG API
@@ -27,7 +25,7 @@ import os
 
 RAG_API_URL = os.getenv(
     "STUDYMATE_API_URL",
-    "http://127.0.0.1:8000",
+    "https://personal-study-assistant-langchain.onrender.com",
 ).rstrip("/")
 
 
@@ -82,9 +80,8 @@ def upload_document_to_api(
         return {
             "ok": False,
             "error": (
-                "Could not connect to StudyMate API. "
-                "Make sure FastAPI is running on "
-                f"{RAG_API_URL}."
+                "Could not connect to the deployed StudyMate API at "
+                f"{RAG_API_URL}. Check the Render service status and try again."
             ),
         }
 
@@ -136,9 +133,8 @@ def ask_rag_api(
         return {
             "ok": False,
             "error": (
-                "Could not connect to StudyMate API. "
-                "Make sure FastAPI is running on "
-                f"{RAG_API_URL}."
+                "Could not connect to the deployed StudyMate API at "
+                f"{RAG_API_URL}. Check the Render service status and try again."
             ),
         }
 
@@ -173,14 +169,14 @@ def render_html(content: str):
 # SESSION STATE
 # ============================================================
 
-if "agent" not in st.session_state:
-    st.session_state.agent = get_agent()
-
-if "memory" not in st.session_state:
-    st.session_state.memory = ConversationMemory()
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if "memory" not in st.session_state:
+    st.session_state.memory = None
+
+if "agent" not in st.session_state:
+    st.session_state.agent = None
 
 if "show_notes" not in st.session_state:
     st.session_state.show_notes = False
@@ -192,27 +188,25 @@ if "uploaded_document" not in st.session_state:
     st.session_state.uploaded_document = None
 
 
-agent = st.session_state.agent
-memory = st.session_state.memory
 
 
 # ============================================================
 # NOTES
 # ============================================================
 
-notes_result = get_notes.invoke({})
+try:
+    notes_result = get_notes.invoke({})
 
-if notes_result == "No notes saved yet.":
-
+    if notes_result == "No notes saved yet.":
+        notes = []
+    else:
+        notes = [
+            line.strip()
+            for line in notes_result.splitlines()
+            if line.strip()
+        ]
+except Exception:
     notes = []
-
-else:
-
-    notes = [
-        line.strip()
-        for line in notes_result.splitlines()
-        if line.strip()
-    ]
 
 note_count = len(notes)
 
@@ -2012,8 +2006,6 @@ chat_submission = st.chat_input(
     accept_file=True,
     file_type=[
         "pdf",
-        "docx",
-        "txt",
     ],
 )
 
@@ -2201,11 +2193,6 @@ if chat_submission:
                 [],
             )
 
-            sources = rag_data.get(
-    "sources",
-    [],
-)
-
             if sources:
             
                 source_lines = []
@@ -2269,46 +2256,57 @@ if chat_submission:
 
         else:
 
-            response = agent.invoke(
-                {
-                    "messages": (
-                        memory.get_messages()
-                        + [
-                            {
-                                "role": "user",
-                                "content": user_input,
-                            }
-                        ]
+            # General chat is loaded lazily. This prevents Streamlit
+            # Cloud from crashing at startup because app.config
+            # requires MODEL_NAME. PDF/RAG mode does not require the
+            # Streamlit-side agent.
+
+            try:
+                if st.session_state.agent is None:
+                    from app.agent.agent import get_agent
+                    from app.memory.memory import ConversationMemory
+
+                    st.session_state.agent = get_agent()
+                    st.session_state.memory = ConversationMemory()
+
+                agent = st.session_state.agent
+                memory = st.session_state.memory
+
+                response = agent.invoke(
+                    {
+                        "messages": (
+                            memory.get_messages()
+                            + [
+                                {
+                                    "role": "user",
+                                    "content": user_input,
+                                }
+                            ]
+                        )
+                    }
+                )
+
+                memory.add_messages(
+                    response["messages"]
+                )
+
+                final_message = response["messages"][-1]
+
+                final_response = final_message.content
+
+                if not isinstance(
+                    final_response,
+                    str,
+                ):
+                    final_response = str(
+                        final_response
                     )
-                }
-            )
 
-
-            # ------------------------------------------------
-            # MEMORY
-            # ------------------------------------------------
-
-            memory.add_messages(
-                response["messages"]
-            )
-
-
-            # ------------------------------------------------
-            # RESPONSE
-            # ------------------------------------------------
-
-            final_message = response["messages"][-1]
-
-            final_response = final_message.content
-
-
-            if not isinstance(
-                final_response,
-                str,
-            ):
-
-                final_response = str(
-                    final_response
+            except Exception as agent_error:
+                raise RuntimeError(
+                    "General chat is not configured on Streamlit Cloud yet. "
+                    "PDF/RAG mode is connected to the deployed FastAPI backend. "
+                    f"Agent error: {agent_error}"
                 )
 
 
