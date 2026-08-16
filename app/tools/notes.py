@@ -12,7 +12,7 @@ NOTES_FILE = Path("data/notes.json")
 # ============================================================
 
 def load_notes():
-    """Load all saved study notes from the JSON file."""
+    """Load all saved study notes."""
 
     if not NOTES_FILE.exists():
         return []
@@ -43,7 +43,7 @@ def load_notes():
 # ============================================================
 
 def save_notes(notes):
-    """Save the complete notes list to the JSON file."""
+    """Save all notes to the JSON file."""
 
     NOTES_FILE.parent.mkdir(
         parents=True,
@@ -65,7 +65,7 @@ def save_notes(notes):
 
 
 # ============================================================
-# SAVE NOTE
+# SAVE ONE NOTE
 # ============================================================
 
 @tool
@@ -87,7 +87,7 @@ def save_note(note: str) -> str:
 
 
 # ============================================================
-# GET NOTES
+# GET ALL NOTES
 # ============================================================
 
 @tool
@@ -111,7 +111,14 @@ def get_notes() -> str:
 
 @tool
 def delete_note(index: int) -> str:
-    """Delete one saved study note using its zero-based index."""
+    """
+    Delete one study note.
+
+    index is ZERO-BASED:
+        0 = first note
+        1 = second note
+        2 = third note
+    """
 
     notes = load_notes()
 
@@ -121,7 +128,7 @@ def delete_note(index: int) -> str:
     if index < 0 or index >= len(notes):
         return "Invalid note index."
 
-    deleted_note = notes.pop(index)
+    notes.pop(index)
 
     save_notes(notes)
 
@@ -129,7 +136,7 @@ def delete_note(index: int) -> str:
 
 
 # ============================================================
-# CLEAR ALL NOTES
+# DELETE ALL NOTES
 # ============================================================
 
 @tool
