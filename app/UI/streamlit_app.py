@@ -187,6 +187,9 @@ if "show_notes" not in st.session_state:
 if "sidebar_open" not in st.session_state:
     st.session_state.sidebar_open = False
 
+if "focus_chat" not in st.session_state:
+    st.session_state.focus_chat = False
+
 if "uploaded_document" not in st.session_state:
     st.session_state.uploaded_document = None
 
@@ -2774,6 +2777,110 @@ st.markdown(
     }
 
 </style>
+<style>
+/* ============================================================
+   ABSOLUTE FINAL COMPOSER WIDTH FIX
+   The previous rules still allowed Streamlit's internal
+   centered/max-width wrapper to constrain st.chat_input.
+
+   Desktop:
+   - closed rail: input spans from the rail to the right edge
+   - open sidebar: input spans from the sidebar edge to the
+     right edge
+   Mobile rules are intentionally left to the existing
+   responsive CSS above.
+   ============================================================ */
+
+@media (min-width: 901px) {
+
+    /* Remove Streamlit's centered/max-width constraint from
+       every layer around the fixed chat input. */
+    [data-testid="stBottom"],
+    [data-testid="stBottom"] > div,
+    [data-testid="stBottom"] > div > div,
+    [data-testid="stBottom"] > div > div > div,
+    [data-testid="stBottom"] [data-testid="stChatInput"],
+    [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+        box-sizing: border-box !important;
+        max-width: none !important;
+        min-width: 0 !important;
+    }
+
+    /* CLOSED RAIL
+       The rail in the desktop UI is 96px wide visually. */
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] {
+        position: fixed !important;
+        left: 96px !important;
+        right: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 7px 18px 12px 18px !important;
+    }
+
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] > div,
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] > div > div,
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] > div > div > div,
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] [data-testid="stChatInput"],
+    body:has([class*="st-key-custom_rail"]):not(:has([class*="st-key-custom_sidebar"]))
+    [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* OPEN SIDEBAR
+       In the rendered desktop UI the sidebar occupies about
+       380px. The composer therefore starts exactly at its
+       visible right edge instead of staying centered. */
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] {
+        position: fixed !important;
+        left: 380px !important;
+        right: 0 !important;
+        width: auto !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 7px 18px 12px 18px !important;
+    }
+
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] > div,
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] > div > div,
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] > div > div > div,
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] [data-testid="stChatInput"],
+    body:has([class*="st-key-custom_sidebar"])
+    [data-testid="stBottom"] [data-testid="stChatInput"] > div {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* The actual input itself must not inherit Streamlit's
+       normal 768px-ish centered width. */
+    [data-testid="stBottom"] [data-testid="stChatInput"] {
+        display: block !important;
+        flex: 1 1 auto !important;
+    }
+
+    [data-testid="stBottom"] [data-testid="stChatInput"] form,
+    [data-testid="stBottom"] [data-testid="stChatInput"] form > div {
+        width: 100% !important;
+        max-width: none !important;
+    }
+}
+</style>
+
     """,
     unsafe_allow_html=True,
 )
@@ -2927,114 +3034,72 @@ else:
 
     # ========================================================
     # CLOSED RAIL
+    #
+    # The compact rail intentionally contains ONLY these five
+    # controls:
+    #   1. Hamburger  -> opens/closes the sidebar
+    #   2. StudyMate logo -> returns to the main study page
+    #   3. Search -> returns to/focuses the main study page
+    #   4. Notes -> opens Study Notes on the main page
+    #   5. New conversation -> clears the conversation
+    #
+    # CRITICAL: none of these buttons changes sidebar_open except
+    # the hamburger. They therefore NEVER open the sidebar.
     # ========================================================
 
     with st.container(key="custom_rail"):
 
-        # ----------------------------------------------------
-        # OPEN SIDEBAR
-        # ----------------------------------------------------
-
+        # 1. HAMBURGER -- the ONLY rail control allowed to open
+        # the sidebar.
         if st.button(
             "☰",
             key="rail_open_button",
             help="Open sidebar",
         ):
-
             st.session_state.sidebar_open = True
-
             st.rerun()
 
-
-        # ----------------------------------------------------
-        # WORKSPACE
-        # ----------------------------------------------------
-
+        # 2. STUDYMATE LOGO -- HOME / MAIN STUDY PAGE
         if st.button(
-            "▦",
-            key="rail_workspace",
-            help="Workspace",
+            "🤖",
+            key="rail_home",
+            help="StudyMate home",
         ):
-
-            st.session_state.sidebar_open = True
-
+            st.session_state.show_notes = False
             st.rerun()
 
-
-        # ----------------------------------------------------
-        # SEARCH
-        # ----------------------------------------------------
-
+        # 3. SEARCH -- MAIN CHAT PAGE
+        # This deliberately does NOT touch sidebar_open.
         if st.button(
             "⌕",
             key="rail_search",
-            help="Search",
+            help="Go to search",
         ):
-
-            st.session_state.sidebar_open = True
-
+            st.session_state.show_notes = False
+            st.session_state.focus_chat = True
             st.rerun()
 
-
-        # ----------------------------------------------------
-        # NOTES
-        # ----------------------------------------------------
-
+        # 4. NOTES -- OPEN NOTES PAGE, WITHOUT OPENING SIDEBAR
         if st.button(
             "📝",
             key="rail_notes",
-            help="Study Notes",
+            help="Study notes",
         ):
-
-            st.session_state.sidebar_open = True
-
             st.session_state.show_notes = True
-
             st.rerun()
 
-
-        # ----------------------------------------------------
-        # EXPLAIN
-        # ----------------------------------------------------
-
+        # 5. NEW CONVERSATION -- CLEAR CHAT, WITHOUT OPENING SIDEBAR
         if st.button(
-            "💡",
-            key="rail_explain",
-            help="Explain concepts",
+            "＋",
+            key="rail_new_conversation",
+            help="New conversation",
         ):
+            if st.session_state.memory is not None:
+                st.session_state.memory.clear()
 
-            st.session_state.sidebar_open = True
-
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # RESEARCH
-        # ----------------------------------------------------
-
-        if st.button(
-            "🔎",
-            key="rail_research",
-            help="Research topics",
-        ):
-
-            st.session_state.sidebar_open = True
-
-            st.rerun()
-
-
-        # ----------------------------------------------------
-        # REVISION
-        # ----------------------------------------------------
-
-        if st.button(
-            "🎯",
-            key="rail_revision",
-            help="Help with revision",
-        ):
-
-            st.session_state.sidebar_open = True
-
+            st.session_state.messages = []
+            st.session_state.show_notes = False
+            st.session_state.uploaded_document = None
             st.rerun()
 
 
@@ -3713,3 +3778,116 @@ if chat_submission:
             st.warning(
                 error_message
             )
+
+st.markdown(
+    """
+    <style>
+    /* ============================================================
+       FINAL CLOSED-RAIL CONTROLS
+       Exactly five icons. Only the hamburger opens the sidebar.
+       ============================================================ */
+
+    [class*="st-key-custom_rail"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 10px !important;
+    }
+
+    [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+    [class*="st-key-custom_rail"] [class*="st-key-rail_home"],
+    [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+    [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+    [class*="st-key-custom_rail"] [class*="st-key-rail_new_conversation"] {
+        display: block !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"] button,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_home"] button,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_search"] button,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_notes"] button,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_new_conversation"] button {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+        background: #F3EEFF !important;
+        background-color: #F3EEFF !important;
+        color: #7354D7 !important;
+        border: 1px solid #D8C9F5 !important;
+        border-radius: 11px !important;
+        box-shadow: 0 3px 10px rgba(115, 84, 215, 0.08) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"] button p,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_home"] button p,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_search"] button p,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_notes"] button p,
+    [class*="st-key-custom_rail"] [class*="st-key-rail_new_conversation"] button p {
+        margin: 0 !important;
+        padding: 0 !important;
+        color: #7354D7 !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
+    }
+
+    [class*="st-key-custom_rail"] button:hover {
+        background: #EAE1FF !important;
+        background-color: #EAE1FF !important;
+        border-color: #C5B1EF !important;
+        color: #6547C9 !important;
+    }
+
+    /* Mobile: keep the same five controls, scaled to the existing
+       compact rail instead of allowing Streamlit to stretch them. */
+    @media (max-width: 900px) {
+        [class*="st-key-custom_rail"] {
+            gap: 10px !important;
+        }
+
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_home"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"],
+        [class*="st-key-custom_rail"] [class*="st-key-rail_new_conversation"] {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+        }
+
+        [class*="st-key-custom_rail"] [class*="st-key-rail_open_button"] button,
+        [class*="st-key-custom_rail"] [class*="st-key-rail_home"] button,
+        [class*="st-key-custom_rail"] [class*="st-key-rail_search"] button,
+        [class*="st-key-custom_rail"] [class*="st-key-rail_notes"] button,
+        [class*="st-key-custom_rail"] [class*="st-key-rail_new_conversation"] button {
+            width: 44px !important;
+            min-width: 44px !important;
+            max-width: 44px !important;
+            height: 44px !important;
+            min-height: 44px !important;
+            max-height: 44px !important;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
