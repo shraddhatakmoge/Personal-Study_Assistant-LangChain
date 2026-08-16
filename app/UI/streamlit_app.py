@@ -1,5 +1,10 @@
 import sys
 from pathlib import Path
+from app.tools.notes import (
+    load_notes,
+    delete_note,
+    clear_notes,
+)
 
 # Add project root to Python path
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
