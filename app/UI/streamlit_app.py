@@ -1,35 +1,40 @@
 import sys
+import os
+import html
+import textwrap
 from pathlib import Path
-from app.tools.notes import (
-    load_notes,
-    delete_note,
-    clear_notes,
-)
 
-# Add project root to Python path
+# ============================================================
+# PROJECT ROOT
+# ============================================================
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import html
-import textwrap
-import requests
+
+# ============================================================
+# STREAMLIT
+# ============================================================
 
 import streamlit as st
+import requests
 
-import os
+
+# ============================================================
+# NOTES
+# ============================================================
+
 from app.tools.notes import (
     load_notes,
     delete_note,
     clear_notes,
 )
 
+
 # ============================================================
 # RAG API
-#
-# The UI talks to FastAPI for document upload and PDF questions.
-# No RAG implementation is imported into the UI.
 # ============================================================
 
 RAG_API_URL = os.getenv(
