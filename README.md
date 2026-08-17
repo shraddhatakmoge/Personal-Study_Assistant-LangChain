@@ -3,8 +3,8 @@ StudyMate — Personal AI Study Assistant
 
 <img width="1836" height="1015" alt="Screenshot 2026-08-16 220553" src="https://github.com/user-attachments/assets/6e7a5fe7-9aec-4645-83d1-9cb9941d55c2" />
 
+<img width="1836" height="1005" alt="image" src="https://github.com/user-attachments/assets/32c226d3-7b45-45cd-a4c7-19aaa42eb855" />
 
-<img width="1761" height="1079" alt="Screenshot 2026-08-16 220525" src="https://github.com/user-attachments/assets/953441ee-a080-4807-ac0b-c4f453c136c0" />
 
 
 
