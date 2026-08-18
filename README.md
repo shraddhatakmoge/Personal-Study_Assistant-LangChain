@@ -1,4 +1,4 @@
-**StudyMate — Personal AI Study Assistant**
+**📚 StudyMate — Personal AI Study Assistant**
 
 
 <img width="1839" height="1010" alt="Screenshot 2026-08-17 082644" src="https://github.com/user-attachments/assets/96bc1dd3-1995-4b36-b7cf-7c20353d85ff" />
