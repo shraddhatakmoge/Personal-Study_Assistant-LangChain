@@ -46,7 +46,7 @@ def save_note(note: str) -> str:
 
     _save_notes(notes)
 
-    return f"Note saved: {note}"
+    return f"Note saved successfully: {note}"
 
 
 @tool
