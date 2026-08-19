@@ -1,5 +1,10 @@
 from pathlib import Path
 from langchain_core.tools import tool
+from pathlib import Path
+from langchain_core.tools import tool
+
+print("🔥 NOTES.PY LOADED")
+print("🔥 NOTES FILE:", __file__)
 
 
 NOTES_FILE = Path(__file__).resolve().parents[2] / "data" / "notes.txt"
