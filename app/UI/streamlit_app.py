@@ -4,52 +4,45 @@ import html
 import json
 import textwrap
 from pathlib import Path
+# ============================================================
+# TEMPORARY GROQ CONNECTION TEST
+# REMOVE THIS AFTER TESTING
+# ============================================================
+
 import os
 import streamlit as st
-# ============================================================
-# TEMPORARY GROQ TEST
-# ============================================================
 
-st.sidebar.markdown("## 🔧 Debug")
+if "groq_test_done" not in st.session_state:
 
-if st.sidebar.button("TEST GROQ", key="debug_groq"):
+    st.session_state.groq_test_done = True
 
     try:
-        import os
 
         from app.model.llm import get_llm
 
-        st.sidebar.info("Testing Groq...")
-
         test_llm = get_llm()
 
-        response = test_llm.invoke(
-            "Say hello in one short sentence."
+        test_response = test_llm.invoke(
+            "Say hello in exactly one short sentence."
         )
 
-        st.sidebar.success("GROQ TEST SUCCESS")
+        st.success("✅ GROQ TEST SUCCESS")
 
-        st.sidebar.write(
-            "Model:",
-            os.getenv(
-                "MODEL_NAME",
-                "llama-3.1-8b-instant"
-            )
+        st.info(
+            f"Model: {os.getenv('MODEL_NAME', 'default')}"
         )
 
-        st.sidebar.write(
-            "Response:",
-            response.content
+        st.write(
+            "Groq response:",
+            test_response.content
         )
 
     except Exception as e:
 
-        st.sidebar.error("GROQ TEST FAILED")
+        st.error("❌ GROQ TEST FAILED")
 
-        st.sidebar.exception(e)
+        st.exception(e)
 
-st.write("GROQ KEY PRESENT:", bool(os.getenv("GROQ_API_KEY")))
-st.write("MODEL:", os.getenv("MODEL_NAME", "llama-3.1-8b-instant"))
 # ============================================================
 # PROJECT ROOT
 # ============================================================
