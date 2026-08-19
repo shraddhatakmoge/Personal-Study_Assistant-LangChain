@@ -4,44 +4,7 @@ import html
 import json
 import textwrap
 from pathlib import Path
-# ============================================================
-# TEMPORARY GROQ CONNECTION TEST
-# REMOVE THIS AFTER TESTING
-# ============================================================
 
-import os
-import streamlit as st
-
-if "groq_test_done" not in st.session_state:
-
-    st.session_state.groq_test_done = True
-
-    try:
-
-        from app.model.llm import get_llm
-
-        test_llm = get_llm()
-
-        test_response = test_llm.invoke(
-            "Say hello in exactly one short sentence."
-        )
-
-        st.success("✅ GROQ TEST SUCCESS")
-
-        st.info(
-            f"Model: {os.getenv('MODEL_NAME', 'default')}"
-        )
-
-        st.write(
-            "Groq response:",
-            test_response.content
-        )
-
-    except Exception as e:
-
-        st.error("❌ GROQ TEST FAILED")
-
-        st.exception(e)
 
 # ============================================================
 # PROJECT ROOT
