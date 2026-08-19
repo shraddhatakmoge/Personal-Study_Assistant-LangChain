@@ -4,7 +4,11 @@ import html
 import json
 import textwrap
 from pathlib import Path
+import os
+import streamlit as st
 
+st.write("GROQ KEY PRESENT:", bool(os.getenv("GROQ_API_KEY")))
+st.write("MODEL:", os.getenv("MODEL_NAME", "llama-3.1-8b-instant"))
 # ============================================================
 # PROJECT ROOT
 # ============================================================
