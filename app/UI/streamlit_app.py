@@ -6,6 +6,42 @@ import textwrap
 from pathlib import Path
 import os
 import streamlit as st
+# ============================================================
+# TEMPORARY GROQ TEST
+# ============================================================
+
+if st.button("TEST GROQ"):
+
+    try:
+
+        from app.model.llm import get_llm
+
+        test_llm = get_llm()
+
+        test_response = test_llm.invoke(
+            "Say hello in one short sentence."
+        )
+
+        st.success("GROQ TEST SUCCESS")
+
+        st.write(
+            "Model:",
+            os.getenv(
+                "MODEL_NAME",
+                "llama-3.1-8b-instant"
+            )
+        )
+
+        st.write(
+            "Response:",
+            test_response.content
+        )
+
+    except Exception as e:
+
+        st.error("GROQ TEST FAILED")
+
+        st.exception(e)
 
 st.write("GROQ KEY PRESENT:", bool(os.getenv("GROQ_API_KEY")))
 st.write("MODEL:", os.getenv("MODEL_NAME", "llama-3.1-8b-instant"))
