@@ -2,17 +2,13 @@ from io import BytesIO
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import tempfile
+import os
+
 
 
 def load_pdf(file_bytes: bytes, filename: str):
 
-    # ---------------------------------------------------------
-    # Save uploaded bytes temporarily because PyPDFLoader
-    # expects a file path.
-    # ---------------------------------------------------------
-
-    import tempfile
-    import os
 
     with tempfile.NamedTemporaryFile(
         delete=False,

@@ -4025,8 +4025,25 @@ if st.session_state.uploaded_document:
 # ============================================================
 # CHAT INPUT
 #
-# UI is unchanged.
-# Uploaded documents are sent to FastAPI for RAG processing.
+# NORMAL CHAT + PDF/RAG BEHAVIOR
+#
+# IMPORTANT:
+#
+# The existence of a previously uploaded PDF does NOT force
+# every future message into RAG mode.
+#
+# Routing is decided by THIS submission:
+#
+#   Normal text only
+#       -> General Agent
+#
+#   PDF + text in the same submission
+#       -> RAG
+#
+#   PDF only
+#       -> Upload/attach the PDF and wait for a question
+#
+# This makes the app behave much more like a normal chatbot.
 # ============================================================
 
 chat_submission = st.chat_input(
@@ -4056,7 +4073,6 @@ if chat_submission:
     )
 
     if user_input is None:
-
         user_input = ""
 
     user_input = user_input.strip()
@@ -4073,9 +4089,34 @@ if chat_submission:
     )
 
 
-    if uploaded_files:
+    # --------------------------------------------------------
+    # ROUTING FLAG
+    # --------------------------------------------------------
+    #
+    # This is the important fix.
+    #
+    # DO NOT use st.session_state.uploaded_document to decide
+    # whether the current message is a RAG request.
+    #
+    # uploaded_document persists for the session. Therefore,
+    # using it for routing would make every later message a
+    # PDF/RAG question.
+    #
+    # Instead, only a PDF attached to THIS message activates
+    # RAG for THIS message.
+    # --------------------------------------------------------
+
+    has_new_pdf = bool(uploaded_files)
+
+
+    # ========================================================
+    # PDF UPLOAD
+    # ========================================================
+
+    if has_new_pdf:
 
         uploaded_file = uploaded_files[0]
+
 
         # ----------------------------------------------------
         # SEND DOCUMENT TO FASTAPI / RAG
@@ -4085,6 +4126,7 @@ if chat_submission:
             uploaded_file
         )
 
+
         if not upload_result["ok"]:
 
             st.error(
@@ -4093,7 +4135,20 @@ if chat_submission:
 
             st.stop()
 
+
         rag_data = upload_result["data"]
+
+
+        # ----------------------------------------------------
+        # SAVE DOCUMENT INFORMATION
+        # ----------------------------------------------------
+        #
+        # The document remains visible in the UI for the
+        # current study session.
+        #
+        # IMPORTANT:
+        # This stored value is NOT used as the routing flag.
+        # ----------------------------------------------------
 
         st.session_state.uploaded_document = {
 
@@ -4107,24 +4162,34 @@ if chat_submission:
 
             "document_id": rag_data["document_id"],
 
-            "chunks": rag_data.get("chunks", 0),
+            "chunks": rag_data.get(
+                "chunks",
+                0,
+            ),
 
         }
 
 
-    # --------------------------------------------------------
-    # FILE ONLY
-    # --------------------------------------------------------
+    # ========================================================
+    # PDF ONLY
+    # ========================================================
+    #
+    # User attached a PDF but did not ask anything yet.
+    # We upload it and show an attachment message.
+    # ========================================================
 
-    if uploaded_files and not user_input:
+    if has_new_pdf and not user_input:
 
         file_name = uploaded_files[0].name
+
 
         attachment_message = (
             f"📄 **Uploaded `{file_name}`**\n\n"
             "The document is attached to this study session. "
-            "You can now ask questions about it."
+            "To ask the document a question, attach the PDF "
+            "with your question."
         )
+
 
         st.session_state.messages.append(
             {
@@ -4133,31 +4198,33 @@ if chat_submission:
             }
         )
 
+
         with st.chat_message("user"):
 
             st.markdown(
                 attachment_message
             )
 
+
         st.stop()
 
 
-    # --------------------------------------------------------
-    # EMPTY
-    # --------------------------------------------------------
+    # ========================================================
+    # EMPTY MESSAGE
+    # ========================================================
 
     if not user_input:
-
         st.stop()
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # USER MESSAGE
-    # --------------------------------------------------------
+    # ========================================================
 
     display_user_message = user_input
 
-    if uploaded_files:
+
+    if has_new_pdf:
 
         file_name = uploaded_files[0].name
 
@@ -4182,27 +4249,62 @@ if chat_submission:
         )
 
 
-    # --------------------------------------------------------
-    # RAG / AGENT
+    # ========================================================
+    # ROUTING
+    # ========================================================
     #
-    # If a PDF is attached to this session, ask FastAPI.
-    # Otherwise keep the existing agent behavior exactly as-is.
-    # --------------------------------------------------------
+    # PDF attached to THIS message
+    #       -> RAG
+    #
+    # No PDF attached to THIS message
+    #       -> General Agent
+    #
+    # A PDF uploaded earlier does NOT change this behavior.
+    # ========================================================
 
     try:
 
-        uploaded_document = (
-            st.session_state.uploaded_document
-        )
+        # ====================================================
+        # RAG MODE
+        # ====================================================
 
-        if uploaded_document and uploaded_document.get(
-            "document_id"
-        ):
+        if has_new_pdf:
+
+            uploaded_document = (
+                st.session_state.uploaded_document
+            )
+
+
+            if not uploaded_document:
+
+                raise RuntimeError(
+                    "PDF was uploaded but no document information "
+                    "was stored."
+                )
+
+
+            document_id = uploaded_document.get(
+                "document_id"
+            )
+
+
+            if not document_id:
+
+                raise RuntimeError(
+                    "PDF upload succeeded but no document_id "
+                    "was returned by the RAG API."
+                )
+
+
+            # ------------------------------------------------
+            # ASK RAG
+            # ------------------------------------------------
 
             rag_result = ask_rag_api(
-                document_id=uploaded_document["document_id"],
+                document_id=document_id,
                 question=user_input,
             )
+
 
             if not rag_result["ok"]:
 
@@ -4210,30 +4312,44 @@ if chat_submission:
                     rag_result["error"]
                 )
 
+
             rag_data = rag_result["data"]
+
+
+            # ------------------------------------------------
+            # ANSWER
+            # ------------------------------------------------
 
             final_response = rag_data.get(
                 "answer",
                 "",
             )
 
+
+            # ------------------------------------------------
+            # SOURCES
+            # ------------------------------------------------
+
             sources = rag_data.get(
                 "sources",
                 [],
             )
 
+
             if sources:
-            
+
                 source_lines = []
                 seen_sources = set()
-            
+
+
                 for source in sources:
-                
+
                     filename = source.get(
                         "filename",
                         "unknown",
                     )
-            
+
+
                     page = source.get(
                         "page_label",
                         source.get(
@@ -4241,38 +4357,46 @@ if chat_submission:
                             None,
                         ),
                     )
-            
+
+
                     source_key = (
                         filename,
                         page,
                     )
-            
+
+
                     if source_key in seen_sources:
                         continue
-                    
+
+
                     seen_sources.add(
                         source_key
                     )
-            
+
+
                     if page is not None:
-                    
+
                         source_lines.append(
                             f"- {filename} — page {page}"
                         )
-            
+
                     else:
-                    
+
                         source_lines.append(
                             f"- {filename}"
                         )
-            
+
+
                 if source_lines:
-                
+
                     final_response = (
                         f"{final_response}\n\n"
                         "**Sources:**\n"
-                        + "\n".join(source_lines)
+                        + "\n".join(
+                            source_lines
+                        )
                     )
+
 
             if not isinstance(
                 final_response,
@@ -4283,65 +4407,124 @@ if chat_submission:
                     final_response
                 )
 
+
+        # ====================================================
+        # GENERAL CHAT MODE
+        # ====================================================
+        #
+        # This is now the default path.
+        #
+        # Even if a PDF was uploaded earlier, a normal message
+        # comes here unless a PDF is attached to that message.
+        # ====================================================
+
         else:
 
-            # General chat is loaded lazily. This prevents Streamlit
-            # Cloud from crashing at startup because app.config
-            # requires MODEL_NAME. PDF/RAG mode does not require the
-            # Streamlit-side agent.
+            # ------------------------------------------------
+            # LAZY LOAD GENERAL AGENT
+            # ------------------------------------------------
 
             try:
+
                 if st.session_state.agent is None:
+
                     from app.agent.agent import get_agent
-                    from app.memory.memory import ConversationMemory
 
-                    st.session_state.agent = get_agent()
-                    st.session_state.memory = ConversationMemory()
+                    from app.memory.memory import (
+                        ConversationMemory
+                    )
 
-                agent = st.session_state.agent
-                memory = st.session_state.memory
+
+                    st.session_state.agent = (
+                        get_agent()
+                    )
+
+
+                    st.session_state.memory = (
+                        ConversationMemory()
+                    )
+
+
+                agent = (
+                    st.session_state.agent
+                )
+
+
+                memory = (
+                    st.session_state.memory
+                )
+
+
+                # ------------------------------------------------
+                # BUILD CONVERSATION INPUT
+                # ------------------------------------------------
+
+                messages_for_agent = (
+                    memory.get_messages()
+                    + [
+                        {
+                            "role": "user",
+                            "content": user_input,
+                        }
+                    ]
+                )
+
+
+                # ------------------------------------------------
+                # INVOKE GENERAL AGENT
+                # ------------------------------------------------
 
                 response = agent.invoke(
                     {
-                        "messages": (
-                            memory.get_messages()
-                            + [
-                                {
-                                    "role": "user",
-                                    "content": user_input,
-                                }
-                            ]
-                        )
+                        "messages": messages_for_agent
                     }
                 )
+
+
+                # ------------------------------------------------
+                # UPDATE MEMORY
+                # ------------------------------------------------
 
                 memory.add_messages(
                     response["messages"]
                 )
 
-                final_message = response["messages"][-1]
 
-                final_response = final_message.content
+                # ------------------------------------------------
+                # GET FINAL RESPONSE
+                # ------------------------------------------------
+
+                final_message = (
+                    response["messages"][-1]
+                )
+
+
+                final_response = (
+                    final_message.content
+                )
+
 
                 if not isinstance(
                     final_response,
                     str,
                 ):
+
                     final_response = str(
                         final_response
                     )
 
+
             except Exception as agent_error:
+
                 raise RuntimeError(
-                    "General chat is not configured on Streamlit Cloud yet. "
-                    "PDF/RAG mode is connected to the deployed FastAPI backend. "
+                    "General chat failed. "
                     f"Agent error: {agent_error}"
                 )
 
 
-        # ----------------------------------------------------
-        # SAVE
-        # ----------------------------------------------------
+        # ====================================================
+        # SAVE ASSISTANT MESSAGE
+        # ====================================================
 
         st.session_state.messages.append(
             {
@@ -4351,11 +4534,13 @@ if chat_submission:
         )
 
 
-        # ----------------------------------------------------
-        # DISPLAY
-        # ----------------------------------------------------
+        # ====================================================
+        # DISPLAY ASSISTANT MESSAGE
+        # ====================================================
 
-        with st.chat_message("assistant"):
+        with st.chat_message(
+            "assistant"
+        ):
 
             st.markdown(
                 final_response
@@ -4384,11 +4569,14 @@ if chat_submission:
         )
 
 
-        with st.chat_message("assistant"):
+        with st.chat_message(
+            "assistant"
+        ):
 
             st.warning(
                 error_message
             )
+
 
 st.markdown(
     """
