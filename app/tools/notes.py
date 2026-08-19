@@ -30,7 +30,7 @@ def _save_notes(notes: list[str]) -> None:
 
 @tool
 def save_note(note: str) -> str:
-    """Save a study note."""
+    """Save a study note to the study notes file."""
     note = note.strip()
 
     if not note:
