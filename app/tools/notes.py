@@ -24,7 +24,24 @@ def _save_notes(notes: list[str]) -> None:
     NOTES_FILE.write_text(
         "\n".join(notes),
         encoding="utf-8",
+
+
     )
+
+@tool
+def save_note(note: str) -> str:
+    """Save a study note."""
+    note = note.strip()
+
+    if not note:
+        return "Cannot save an empty note."
+
+    notes = load_notes()
+    notes.append(note)
+
+    _save_notes(notes)
+
+    return f"Note saved: {note}"
 
 
 @tool

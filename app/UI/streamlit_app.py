@@ -3,6 +3,7 @@ import os
 import html
 import json
 import textwrap
+import traceback
 from pathlib import Path
 
 
@@ -4550,17 +4551,19 @@ if chat_submission:
 
     except Exception as e:
 
-        print(
-            f"StudyMate error: "
-            f"{type(e).__name__}: {e}"
-        )
+    
 
+        error_details = traceback.format_exc()
+
+        print("\n" + "=" * 80)
+        print("STUDYMATE ERROR")
+        print("=" * 80)
+        print(error_details)
+        print("=" * 80)
 
         error_message = (
-            "I couldn't complete that request right now. "
-            "Please try again."
+            f"ERROR: {type(e).__name__}: {e}"
         )
-
 
         st.session_state.messages.append(
             {
@@ -4569,15 +4572,15 @@ if chat_submission:
             }
         )
 
+        with st.chat_message("assistant"):
 
-        with st.chat_message(
-            "assistant"
-        ):
+            st.error(error_message)
 
-            st.warning(
-                error_message
-            )
+            with st.expander("Technical error details"):
 
+                st.code(
+                    error_details
+                )
 
 st.markdown(
     """
