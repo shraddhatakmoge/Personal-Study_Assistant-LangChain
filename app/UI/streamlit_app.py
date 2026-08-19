@@ -10,21 +10,26 @@ import streamlit as st
 # TEMPORARY GROQ TEST
 # ============================================================
 
-if st.button("TEST GROQ"):
+st.sidebar.markdown("## 🔧 Debug")
+
+if st.sidebar.button("TEST GROQ", key="debug_groq"):
 
     try:
+        import os
 
         from app.model.llm import get_llm
 
+        st.sidebar.info("Testing Groq...")
+
         test_llm = get_llm()
 
-        test_response = test_llm.invoke(
+        response = test_llm.invoke(
             "Say hello in one short sentence."
         )
 
-        st.success("GROQ TEST SUCCESS")
+        st.sidebar.success("GROQ TEST SUCCESS")
 
-        st.write(
+        st.sidebar.write(
             "Model:",
             os.getenv(
                 "MODEL_NAME",
@@ -32,16 +37,16 @@ if st.button("TEST GROQ"):
             )
         )
 
-        st.write(
+        st.sidebar.write(
             "Response:",
-            test_response.content
+            response.content
         )
 
     except Exception as e:
 
-        st.error("GROQ TEST FAILED")
+        st.sidebar.error("GROQ TEST FAILED")
 
-        st.exception(e)
+        st.sidebar.exception(e)
 
 st.write("GROQ KEY PRESENT:", bool(os.getenv("GROQ_API_KEY")))
 st.write("MODEL:", os.getenv("MODEL_NAME", "llama-3.1-8b-instant"))
