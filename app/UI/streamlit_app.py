@@ -5,6 +5,8 @@ import json
 import textwrap
 import traceback
 from pathlib import Path
+import importlib
+            
 
 
 # ============================================================
@@ -4430,18 +4432,143 @@ if chat_submission:
 
                 if st.session_state.agent is None:
 
-                    from app.agent.agent import get_agent
+    # ====================================================
+    # DEBUG: CHECK NOTES MODULE
+    # ====================================================
+
+              
+                    try:
+                    
+                        notes_module = importlib.import_module(
+                            "app.tools.notes"
+                        )
+
+                        st.write("### DEBUG — NOTES MODULE")
+
+                        st.write(
+                            "Loaded from:"
+                        )
+
+                        st.code(
+                            str(notes_module.__file__)
+                        )
+
+                        st.write(
+                            "save_note exists:"
+                        )
+
+                        st.write(
+                            hasattr(
+                                notes_module,
+                                "save_note"
+                            )
+                        )
+
+                        st.write(
+                            "get_notes exists:"
+                        )
+
+                        st.write(
+                            hasattr(
+                                notes_module,
+                                "get_notes"
+                            )
+                        )
+
+                        st.write(
+                            "Available functions:"
+                        )
+
+                        st.code(
+                            str(
+                                [
+                                    name
+                                    for name in dir(notes_module)
+                                    if not name.startswith("_")
+                                ]
+                            )
+                        )
+
+                    except Exception:
+                    
+                        st.error(
+                            "❌ app.tools.notes IMPORT FAILED"
+                        )
+
+                        st.code(
+                            traceback.format_exc()
+                        )
+
+                        st.stop()
+
+
+                    # ====================================================
+                    # DEBUG: CHECK AGENT MODULE
+                    # ====================================================
+
+                    try:
+                    
+                        agent_module = importlib.import_module(
+                            "app.agent.agent"
+                        )
+
+                        st.write(
+                            "### DEBUG — AGENT MODULE"
+                        )
+
+                        st.write(
+                            "Loaded from:"
+                        )
+
+                        st.code(
+                            str(agent_module.__file__)
+                        )
+
+                        st.write(
+                            "get_agent exists:"
+                        )
+
+                        st.write(
+                            hasattr(
+                                agent_module,
+                                "get_agent"
+                            )
+                        )
+
+                        get_agent = (
+                            agent_module.get_agent
+                        )
+
+                    except Exception:
+                    
+                        st.error(
+                            "❌ app.agent.agent IMPORT FAILED"
+                        )
+
+                        st.code(
+                            traceback.format_exc()
+                        )
+
+                        st.stop()
+
+
+                # ====================================================
+                # MEMORY
+                # ====================================================
 
                     from app.memory.memory import (
                         ConversationMemory
                     )
-
-
+    
+    
+                    # ====================================================
+                    # CREATE AGENT
+                    # ====================================================
+    
                     st.session_state.agent = (
                         get_agent()
                     )
-
-
+    
                     st.session_state.memory = (
                         ConversationMemory()
                     )
