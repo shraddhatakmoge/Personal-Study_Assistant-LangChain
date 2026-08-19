@@ -4473,46 +4473,224 @@ if chat_submission:
 
 
                 # ------------------------------------------------
-                # INVOKE GENERAL AGENT
+                # STREAM GENERAL AGENT
+                #
+                # IMPORTANT:
+                # LangGraph streams LLM output chunk-by-chunk here.
+                # The user therefore sees the answer as it is
+                # generated instead of waiting for agent.invoke()
+                # to finish.
                 # ------------------------------------------------
 
-                response = agent.invoke(
-                    {
-                        "messages": messages_for_agent
-                    }
-                )
+                final_response = ""
 
+                # Keep the final graph state so conversation memory
+                # can be updated exactly like the old invoke() path.
+                final_state = None
+
+                with st.chat_message("assistant"):
+
+                    response_placeholder = st.empty()
+
+                    # "messages" streams LLM message/token chunks.
+                    # "values" gives us the final graph state for memory.
+                    #
+                    # With multiple stream modes LangGraph returns:
+                    #     (stream_mode, chunk)
+                    #
+                    # Some LangGraph versions may expose message chunks
+                    # directly, so the helper below handles both shapes.
+                    try:
+                        stream = agent.stream(
+                            {
+                                "messages": messages_for_agent
+                            },
+                            stream_mode=["messages", "values"],
+                        )
+                    except TypeError:
+                        # Compatibility fallback for versions where
+                        # multiple stream modes are unavailable.
+                        stream = agent.stream(
+                            {
+                                "messages": messages_for_agent
+                            },
+                            stream_mode="messages",
+                        )
+
+                    def extract_text_from_chunk(chunk):
+                        """Extract visible text from LangGraph message chunks."""
+
+                        if chunk is None:
+                            return ""
+
+                        content = getattr(
+                            chunk,
+                            "content",
+                            None,
+                        )
+
+                        if content is None and isinstance(chunk, dict):
+                            content = chunk.get("content")
+
+                        if isinstance(content, str):
+                            return content
+
+                        # Some LangChain models return content as a list
+                        # of blocks such as:
+                        # [{"type": "text", "text": "hello"}]
+                        if isinstance(content, list):
+                            pieces = []
+
+                            for block in content:
+                                if isinstance(block, str):
+                                    pieces.append(block)
+
+                                elif isinstance(block, dict):
+                                    if block.get("type") in (
+                                        "text",
+                                        "output_text",
+                                    ):
+                                        text_part = block.get("text", "")
+                                        if text_part:
+                                            pieces.append(str(text_part))
+
+                                else:
+                                    block_text = getattr(
+                                        block,
+                                        "text",
+                                        None,
+                                    )
+                                    if block_text:
+                                        pieces.append(str(block_text))
+
+                            return "".join(pieces)
+
+                        return ""
+
+                    for streamed_item in stream:
+
+                        # --------------------------------------------
+                        # MULTI-MODE STREAM
+                        # --------------------------------------------
+
+                        if isinstance(streamed_item, tuple) and len(streamed_item) == 2:
+
+                            stream_mode, chunk = streamed_item
+
+                            if stream_mode == "values":
+
+                                # "values" contains the complete graph
+                                # state after each graph step.
+                                if isinstance(chunk, dict):
+                                    final_state = chunk
+
+                                continue
+
+                            if stream_mode != "messages":
+                                continue
+
+                            # LangGraph's messages mode commonly yields:
+                            # (message_chunk, metadata)
+                            if isinstance(chunk, tuple) and len(chunk) >= 1:
+                                message_chunk = chunk[0]
+                            else:
+                                message_chunk = chunk
+
+                        # --------------------------------------------
+                        # SINGLE-MODE FALLBACK
+                        # --------------------------------------------
+
+                        else:
+
+                            # In messages-only mode LangGraph commonly
+                            # yields (message_chunk, metadata).
+                            if isinstance(streamed_item, tuple) and len(streamed_item) >= 1:
+                                message_chunk = streamed_item[0]
+                            else:
+                                message_chunk = streamed_item
+
+                        text_chunk = extract_text_from_chunk(
+                            message_chunk
+                        )
+
+                        if text_chunk:
+
+                            final_response += text_chunk
+
+                            # Re-render the accumulated answer on every
+                            # token/chunk. This creates the ChatGPT-like
+                            # streaming effect in Streamlit.
+                            response_placeholder.markdown(
+                                final_response
+                            )
+
+                    # --------------------------------------------
+                    # FALLBACK IF THE MODEL DID NOT PROVIDE
+                    # TOKEN STREAMING
+                    # --------------------------------------------
+
+                    if not final_response and final_state:
+
+                        state_messages = final_state.get(
+                            "messages",
+                            [],
+                        )
+
+                        if state_messages:
+
+                            final_message = state_messages[-1]
+
+                            final_response = getattr(
+                                final_message,
+                                "content",
+                                "",
+                            )
+
+                            if not isinstance(
+                                final_response,
+                                str,
+                            ):
+                                final_response = str(
+                                    final_response
+                                )
+
+                            response_placeholder.markdown(
+                                final_response
+                            )
 
                 # ------------------------------------------------
                 # UPDATE MEMORY
                 # ------------------------------------------------
-
-                memory.add_messages(
-                    response["messages"]
-                )
-
-
-                # ------------------------------------------------
-                # GET FINAL RESPONSE
+                #
+                # Prefer the final graph state because it contains
+                # the actual messages produced during execution.
+                # If the installed LangGraph version did not expose
+                # values mode, save the current user + assistant
+                # exchange directly.
                 # ------------------------------------------------
 
-                final_message = (
-                    response["messages"][-1]
-                )
+                if final_state and final_state.get("messages"):
 
+                    memory.add_messages(
+                        final_state["messages"]
+                    )
 
-                final_response = (
-                    final_message.content
-                )
+                else:
 
+                    from langchain_core.messages import (
+                        HumanMessage,
+                        AIMessage,
+                    )
 
-                if not isinstance(
-                    final_response,
-                    str,
-                ):
-
-                    final_response = str(
-                        final_response
+                    memory.add_messages(
+                        [
+                            HumanMessage(
+                                content=user_input
+                            ),
+                            AIMessage(
+                                content=final_response
+                            ),
+                        ]
                     )
 
 
